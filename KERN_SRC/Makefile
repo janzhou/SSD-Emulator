@@ -1,5 +1,5 @@
 
-obj-m		:= flash_blk.o 
+obj-m		:= ssd_blkdev.o 
 KERN_SRC	:= /lib/modules/$(shell uname -r)/build/
 PWD			:= $(shell pwd)
 
