@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<General-info>
+    <Driver-name>flash_blk</Driver-name>
+    <Toolchain>Linux GCC</Toolchain>
+    <Architecture>x86_64</Architecture>
+    <hostMachineKernel>true</hostMachineKernel>
+    <Kernel-Version>/home/raghavendra/linux-4.3.3</Kernel-Version>
+    <Licence>GPL</Licence>
+    <Author-name>raghavendra</Author-name>
+    <location>/home/raghavendra/link_workspace</location>
+    <wizardType>false</wizardType>
+    <wizardTypeInfo>false</wizardTypeInfo>
+</General-info>
