@@ -12,6 +12,8 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #include <linux/blkdev.h>
 #include <linux/vmalloc.h>
 
+#include "ssd_blkdev.h"
+
 #define DRIVER_NAME "ssd_blkdev"
 #define PDEBUG(fmt,args...) pr_debug("%s: "fmt,DRIVER_NAME, ##args)
 #define PERR(fmt,args...) pr_err("%s: "fmt,DRIVER_NAME,##args)
@@ -22,15 +24,54 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #define SSD_DEV_MAX_PARTITION	1
 #define SSD_DEV_NUM_SECTORS	1024 * 1024
 #define SSD_DEV_SECTOR_SIZE	512
-#define NUM_SSD_DEVS		1
 
 static struct gendisk *ssd_disk;
 static struct request_queue *ssd_queue;
 static spinlock_t ssd_lck;
 
+struct sector_request_map {
+	sector_t lba;
+	sector_t ppn;
+} request_map;
+
+static wait_queue_head_t sector_lba_wq;
+static wait_queue_head_t sector_ppn_wq;
+
+static u8 lba_wait_flag, ppn_wait_flag;
+
+static struct task_struct *user_app;
+
 static u8 *ssd_dev_data;
 
 int major;
+
+static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
+		unsigned cmd, unsigned long arg)
+{
+	switch (cmd) {
+	case SSD_BLKDEV_REGISTER_APP:
+		user_app = current;
+		break;
+
+	case SSD_BLKDEV_GET_LBN:
+		wait_event_interruptible(sector_lba_wq, lba_wait_flag);
+		put_user((unsigned long) request_map.lba, (unsigned long __user *) arg);
+		lba_wait_flag = 0;
+		break;
+
+	case SSD_BLKDEV_SET_PPN:
+		get_user(request_map.ppn, (unsigned long __user *) arg);
+		ppn_wait_flag = 1;
+		wake_up_interruptible(&sector_ppn_wq);
+		break;
+
+	default:
+		PERR("Undefined IOCTL for the device\n");
+		return -ENOTTY;
+	}
+
+	return 0;
+}
 
 static void ssd_dev_write(sector_t sector_offset, u8 *buff, unsigned int sectors)
 {
@@ -59,21 +100,29 @@ static int ssd_transfer(struct request *req)
 
 	int ret = 0;
 
-	PINFO("Request: Dir: %d; Sector: %lu; Cnt: %d\n",
-			dir, start_sector, nr_sectors);
+//	PINFO("Request: Dir: %d; Sector: %lu; Cnt: %d\n",
+//			dir, start_sector, nr_sectors);
 
 	rq_for_each_segment(bv, req, iter) {
 		buff = page_address(bv.bv_page) + bv.bv_offset;
 		sectors = bv.bv_len / SSD_DEV_SECTOR_SIZE;
 
-		PINFO("Bio: Sector offset: %lu; Buffer: %p; Length: %d sectors\n",
-				sector_offset, buff, sectors);
+//		PINFO("Bio: Sector offset: %lu; Buffer: %p; Length: %d sectors\n",
+//				sector_offset, buff, sectors);
+
+		request_map.lba = start_sector + sector_offset;
+		lba_wait_flag = 1;
+		wake_up_interruptible(&sector_lba_wq);
+
+		wait_event_interruptible(sector_ppn_wq, ppn_wait_flag);
+		PINFO("Got PPN: %lu\n", request_map.ppn);
 
 		if (dir == WRITE)
-			ssd_dev_write(start_sector + sector_offset, buff, sectors);
+			ssd_dev_write(request_map.ppn, buff, sectors);
 		else
-			ssd_dev_read(start_sector + sector_offset, buff, sectors);
+			ssd_dev_read(request_map.ppn, buff, sectors);
 
+		ppn_wait_flag = 0;
 		sector_offset += sectors;
 	}
 
@@ -86,17 +135,29 @@ static int ssd_transfer(struct request *req)
 
 static void ssd_make_request(struct request_queue *q)
 {
-	int ret;
+	int ret = 0;
 	struct request *req;
 
 	while ((req = blk_fetch_request(q)) != NULL) {
-		ret = ssd_transfer(req);
+		if (user_app)
+			ret = ssd_transfer(req);
+
 		__blk_end_request_all(req, ret);
 	}
 }
 
+void ssd_dev_release(struct gendisk *gendisk, fmode_t mode)
+{
+	if (user_app != current)
+		return;
+
+	user_app = NULL;
+}
+
 static const struct block_device_operations ssd_fops = {
 		.owner = THIS_MODULE,
+		.ioctl = ssd_dev_ioctl,
+		.release = ssd_dev_release
 };
 
 static int ssd_dev_create(void)
@@ -166,6 +227,9 @@ static int __init ssd_blkdev_init(void)
 	}
 
 	add_disk(ssd_disk);
+
+	init_waitqueue_head(&sector_lba_wq);
+	init_waitqueue_head(&sector_ppn_wq);
 
 	PINFO("Allocated major for %s = %d\n", DRIVER_NAME, major);
 
