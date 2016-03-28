@@ -1,0 +1,14 @@
+/Verification
+/Trace
+/RAID
+/Page
+/Correctness
+bimodal
+correctness
+dftl
+raid
+test
+test2
+ufliptrace
+*.o
+*.kdev4
