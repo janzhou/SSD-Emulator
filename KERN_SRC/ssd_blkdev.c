@@ -25,14 +25,11 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #define SSD_DEV_NUM_SECTORS	1024 * 1024
 #define SSD_DEV_SECTOR_SIZE	512
 
+static struct sector_request_map request_map;
+
 static struct gendisk *ssd_disk;
 static struct request_queue *ssd_queue;
 static spinlock_t ssd_lck;
-
-struct sector_request_map {
-	sector_t lba;
-	sector_t ppn;
-} request_map;
 
 static wait_queue_head_t sector_lba_wq;
 static wait_queue_head_t sector_ppn_wq;
@@ -55,12 +52,12 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 
 	case SSD_BLKDEV_GET_LBN:
 		wait_event_interruptible(sector_lba_wq, lba_wait_flag);
-		put_user((unsigned long) request_map.lba, (unsigned long __user *) arg);
+		copy_to_user((struct sector_request_map __user *) arg, &request_map, sizeof(request_map));
 		lba_wait_flag = 0;
 		break;
 
 	case SSD_BLKDEV_SET_PPN:
-		get_user(request_map.ppn, (unsigned long __user *) arg);
+		copy_from_user(&request_map, (struct sector_request_map __user *) arg, sizeof(request_map));
 		ppn_wait_flag = 1;
 		wake_up_interruptible(&sector_ppn_wq);
 		break;
@@ -111,11 +108,14 @@ static int ssd_transfer(struct request *req)
 //				sector_offset, buff, sectors);
 
 		request_map.lba = start_sector + sector_offset;
+		request_map.dir = dir;
+		request_map.num_sectors = sectors;
+
 		lba_wait_flag = 1;
 		wake_up_interruptible(&sector_lba_wq);
 
 		wait_event_interruptible(sector_ppn_wq, ppn_wait_flag);
-		PINFO("Got PPN: %lu\n", request_map.ppn);
+//		PINFO("Got PPN: %lu\n", request_map.ppn);
 
 		if (dir == WRITE)
 			ssd_dev_write(request_map.ppn, buff, sectors);

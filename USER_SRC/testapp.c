@@ -9,8 +9,7 @@
 
 #define SSD_DEV_NODE	"/dev/ssd_ramdisk"
 
-static unsigned long lba;
-static unsigned long ppn;
+static struct sector_request_map request_map;
 
 static unsigned long req_cnt;
 
@@ -30,13 +29,14 @@ int main()
 
 
 	while (1) {
-		ioctl(fd, SSD_BLKDEV_GET_LBN, &lba);
-		printf("[%lu] Request LBA: %lu\n", ++req_cnt, lba);
+		ioctl(fd, SSD_BLKDEV_GET_LBN, &request_map);
+		printf("[%lu] Request LBA: %lu; Size: %u sectors; Dir: %d\n",
+				++req_cnt, request_map.lba, request_map.num_sectors, request_map.dir);
 
 		/* Make LBA to PPN conversion here */
-		ppn = lba;
+		request_map.ppn = request_map.lba;
 
-		ioctl(fd, SSD_BLKDEV_SET_PPN, &ppn);
+		ioctl(fd, SSD_BLKDEV_SET_PPN, &request_map);
 	}
 
 	close(fd);
