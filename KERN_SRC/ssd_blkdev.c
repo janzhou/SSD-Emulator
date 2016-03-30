@@ -115,7 +115,7 @@ static int ssd_transfer(struct request *req)
 		wake_up_interruptible(&sector_lba_wq);
 
 		wait_event_interruptible(sector_ppn_wq, ppn_wait_flag);
-//		PINFO("Got PPN: %lu\n", request_map.ppn);
+		PINFO("Got PPN: %lu\n", request_map.ppn);
 
 		if (dir == WRITE)
 			ssd_dev_write(request_map.ppn, buff, sectors);
