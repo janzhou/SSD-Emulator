@@ -1,5 +1,5 @@
-
-obj-m		:= ssd_blkdev.o 
+obj-m += ssd.o
+ssd-objs := ssd_blkdev.o ftl/direct_ftl.o ftl/dftl.o ftl/user_ftl.o
 KERN_SRC	:= /lib/modules/$(shell uname -r)/build/
 PWD			:= $(shell pwd)
 
