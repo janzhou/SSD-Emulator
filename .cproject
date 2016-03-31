@@ -5,16 +5,16 @@
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.exe.debug.889341502" moduleId="org.eclipse.cdt.core.settings" name="Debug">
 				<externalSettings/>
 				<extensions>
+					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
 					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.debug.889341502" name="Debug" parent="cdt.managedbuild.config.gnu.exe.debug">
+				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.debug.889341502" name="Debug" parent="cdt.managedbuild.config.gnu.exe.debug">
 					<folderInfo id="cdt.managedbuild.config.gnu.exe.debug.889341502." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.exe.debug.278748251" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.exe.debug">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.exe.debug.186144555" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.exe.debug"/>
@@ -36,8 +36,8 @@
 									<listOptionValue builtIn="false" value="CONFIG_PM=1"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.paths.1090111090" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/home/raghavendra/linux-4.3.3/include/"/>
-									<listOptionValue builtIn="false" value="/home/raghavendra/linux-4.3.3/arch/x86/include/"/>
+									<listOptionValue builtIn="false" value="/home/cass/Downloads/linux-4.3.3/arch/x86/include/"/>
+									<listOptionValue builtIn="false" value="/home/cass/Downloads/linux-4.3.3/include/"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1207640167" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -50,22 +50,6 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.1155104179" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug"/>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.debug.1931032740" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.debug">
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1898706931" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
-							</tool>
-						</toolChain>
-					</folderInfo>
-					<folderInfo id="cdt.managedbuild.config.gnu.exe.debug.889341502.87361740" name="/" resourcePath="USER_SRC">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.exe.debug.609487222" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.exe.debug" unusedChildren="">
-							<targetPlatform id="cdt.managedbuild.target.gnu.platform.exe.debug" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.exe.debug"/>
-							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1170052081" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base.125056187"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.exe.debug.464923100" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.exe.debug.367136961"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.91673260" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.1083263072">
-								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.43175902" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
-							</tool>
-							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.1955069863" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug.98154394"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.392544756" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.1155104179"/>
-							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.debug.1920720022" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.debug.1931032740">
-								<option id="gnu.both.asm.option.include.paths.2126431582" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
-								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1042373070" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
 					</folderInfo>

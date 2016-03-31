@@ -1,6 +1,6 @@
 
 obj-m		:= ssd_blkdev.o 
-KERN_SRC	:= /lib/modules/$(shell uname -r)/build/
+KERN_SRC 	:=/home/cass/Downloads/linux-4.3.3/
 PWD			:= $(shell pwd)
 
 modules:
