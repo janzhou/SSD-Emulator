@@ -25,6 +25,8 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #define SSD_DEV_NUM_SECTORS	1024 * 1024
 #define SSD_DEV_SECTOR_SIZE	512
 
+#define SSD_DEV_MAX_MINORS 4
+
 static struct sector_request_map request_map;
 
 static struct gendisk *ssd_disk;
@@ -115,7 +117,7 @@ static int ssd_transfer(struct request *req)
 		wake_up_interruptible(&sector_lba_wq);
 
 		wait_event_interruptible(sector_ppn_wq, ppn_wait_flag);
-		PINFO("Got PPN: %lu\n", request_map.ppn);
+//		PINFO("Got PPN: %lu\n", request_map.ppn);
 
 		if (dir == WRITE)
 			ssd_dev_write(request_map.ppn, buff, sectors);
@@ -182,21 +184,22 @@ static int ssd_dev_create(void)
 
 	ssd_disk->major = major;
 	ssd_disk->first_minor = 0;
+	ssd_disk->minors = SSD_DEV_MAX_MINORS;
 	ssd_disk->fops = &ssd_fops;
 	ssd_disk->queue = ssd_queue;
 	sprintf(ssd_disk->disk_name, "ssd_ramdisk");
 	set_capacity(ssd_disk, SSD_DEV_NUM_SECTORS);
 
-	ssd_dev_data = vmalloc(SSD_DEV_SECTOR_SIZE * SSD_DEV_NUM_SECTORS);
+	ssd_dev_data = vzalloc(SSD_DEV_SECTOR_SIZE * SSD_DEV_NUM_SECTORS);
 	if (!ssd_dev_data) {
 		PERR("Failed to allocate memory for the disk space\n");
 		ret = PTR_ERR(ssd_dev_data);
-		goto vmalloc_fail;
+		goto vzalloc_fail;
 	}
 
 	return 0;
 
-vmalloc_fail:
+vzalloc_fail:
 	put_disk(ssd_disk);
 disk_fail:
 	blk_cleanup_queue(ssd_queue);
