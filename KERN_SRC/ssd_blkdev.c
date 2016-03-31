@@ -14,6 +14,9 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #include "ssd_blkdev.h"
 
+#include "ftl/ftl.h"
+struct ftl * ftl = &default_ftl;
+
 #define DRIVER_NAME "ssd_blkdev"
 #define PDEBUG(fmt,args...) pr_debug("%s: "fmt,DRIVER_NAME, ##args)
 #define PERR(fmt,args...) pr_err("%s: "fmt,DRIVER_NAME,##args)
@@ -241,7 +244,7 @@ create_fail:
 }
 
 static void __exit ssd_blkdev_exit(void)
-{	
+{
 	del_gendisk(ssd_disk);
 	ssd_dev_destroy();
 	unregister_blkdev(major, SSD_DEV_NAME);
