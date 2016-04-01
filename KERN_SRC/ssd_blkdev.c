@@ -65,7 +65,6 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 		break;
 
 	default:
-		PERR("Undefined IOCTL for the device\n");
 		return -ENOTTY;
 	}
 
@@ -80,6 +79,10 @@ static void ssd_dev_write(sector_t sector_offset, u8 *buff, unsigned int sectors
 
 static void ssd_dev_read(sector_t sector_offset, u8 *buff, unsigned int sectors)
 {
+	/* Read before a write request */
+	if (sector_offset == NR_PAGES)
+		return;
+
 	memcpy(buff, ssd_dev_data + sector_offset * SSD_DEV_SECTOR_SIZE,
 			sectors * SSD_DEV_SECTOR_SIZE);
 }
@@ -233,8 +236,6 @@ static int __init ssd_blkdev_init(void)
 
 	init_waitqueue_head(&sector_lba_wq);
 	init_waitqueue_head(&sector_ppn_wq);
-
-	PINFO("Allocated major for %s = %d\n", DRIVER_NAME, major);
 
 	return 0;
 

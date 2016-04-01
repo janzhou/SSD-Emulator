@@ -14,4 +14,9 @@ struct sector_request_map {
 	unsigned int num_sectors;
 };
 
+/* Below data should be correlated with USER_SRC/ftl/ftl.h */
+#define NR_BLOCKS 1024
+#define NR_PAGES_PER_BLOCK 1024
+#define NR_PAGES (NR_BLOCKS * NR_PAGES_PER_BLOCK)
+
 #endif /* SSD_BLKDEV_IOCTL_H_ */
