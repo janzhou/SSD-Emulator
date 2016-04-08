@@ -36,13 +36,14 @@ int main()
 		ioctl(fd, SSD_BLKDEV_GET_LBN, &request_map);
 
 		if (request_map.dir == READ)
-			request_map.ppn = ftl->read(request_map.lba);
+			request_map.psn = ftl->read(request_map.lba);
 		else
-			request_map.ppn = ftl->write(request_map.lba);
+			request_map.psn = ftl->write(request_map.lba);
 
-		printf("[%lu] Request LBA: %lu; PPN: %lu; Size: %u sectors; Dir: %d\n",
-				++req_cnt, request_map.lba, request_map.ppn,
-				request_map.num_sectors, request_map.dir);
+//		if (request_map.num_sectors != 8)
+//			printf("[%lu] Request LBA: %lu; PPN: %lu; Size: %u sectors; Dir: %d\n",
+//					++req_cnt, request_map.lba, request_map.psn,
+//					request_map.num_sectors, request_map.dir);
 
 //		request_map.ppn = request_map.lba;
 

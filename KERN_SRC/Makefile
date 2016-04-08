@@ -1,10 +1,12 @@
 
 obj-m		:= ssd_blkdev.o 
 KERN_SRC 	:=/home/cass/Downloads/linux-4.3.3/
+USER_FTL_SRC:= ../USER_SRC/ftl
 PWD			:= $(shell pwd)
 
 modules:
 	make -C $(KERN_SRC) M=$(PWD) modules
+	make -C $(USER_FTL_SRC)
 
 install:
 	make -C $(KERN_SRC) M=$(PWD) modules_install
@@ -12,3 +14,4 @@ install:
 
 clean:
 	make -C $(KERN_SRC) M=$(PWD) clean
+	make -C $(USER_FTL_SRC) clean

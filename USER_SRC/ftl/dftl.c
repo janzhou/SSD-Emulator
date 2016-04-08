@@ -3,24 +3,24 @@
 #include "list.h"
 
 typedef struct {
-	uint32_t lpn[NR_PAGES_PER_BLOCK];
+	uint32_t lpn[SSD_NR_PAGES_PER_BLOCK];
 	uint32_t id;
 	uint32_t clean;
 	uint32_t dirty;
 	struct list_head list;
 } dftl_block;
 
-dftl_block dftl_blocks[NR_BLOCKS];
+dftl_block dftl_blocks[SSD_NR_BLOCKS];
 
 LIST_HEAD(free_block);
 LIST_HEAD(gc_block);
 
 struct {
-	uint32_t ppn;
+	uint32_t psn;
 	uint32_t block;
 	bool cached;
 	bool dirty;
-} dftl_table[TABLE_SIZE];
+} dftl_table[SSD_MAP_TABLE_SIZE];
 
 struct {
 	uint32_t lpn;
@@ -65,16 +65,16 @@ void dftl_init(void)
 {
 	uint32_t i = 0;
 
-	for (i = 0; i < TABLE_SIZE; i++) {
-		dftl_table[i].ppn = NR_PAGES;
+	for (i = 0; i < SSD_MAP_TABLE_SIZE; i++) {
+		dftl_table[i].psn = SSD_MAP_TABLE_SIZE;
 		dftl_table[i].cached = false;
 		dftl_table[i].dirty = false;
 	}
 
-	for (i = 0; i < NR_BLOCKS; i++) {
+	for (i = 0; i < SSD_NR_BLOCKS; i++) {
 		list_add_tail(&(dftl_blocks[i].list), &(free_block));
 		dftl_blocks[i].id = i;
-		dftl_blocks[i].clean = NR_PAGES_PER_BLOCK;
+		dftl_blocks[i].clean = SSD_NR_PAGES_PER_BLOCK;
 		dftl_blocks[i].dirty = 0;
 	}
 
@@ -83,12 +83,12 @@ void dftl_init(void)
 
 uint32_t dftl_read(uint32_t lpn)
 {
-	if (!dftl_table[lpn].cached) {
-		usleep(FLASH_PAGE_READ_DELAY);
-		cache(lpn);
-	}
+//	if (!dftl_table[lpn].cached) {
+//		usleep(FLASH_PAGE_READ_DELAY);
+//		cache(lpn);
+//	}
 
-	return dftl_table[lpn].ppn;
+	return dftl_table[lpn].psn;
 }
 
 void dftl_gc(void)
@@ -119,29 +119,29 @@ dftl_block * dftl_free_block(void)
 
 uint32_t dftl_write(uint32_t lpn)
 {
-	uint32_t ppn = 0;
+	uint32_t psn = 0;
 	dftl_block * block;
 
-	if (!dftl_table[lpn].cached) {
-		usleep(FLASH_PAGE_READ_DELAY);
-		cache(lpn);
-	}
+//	if (!dftl_table[lpn].cached) {
+//		usleep(FLASH_PAGE_READ_DELAY);
+//		cache(lpn);
+//	}
 
-	if (!(dftl_table[lpn].ppn >= NR_PAGES)) {
-		int block_id = dftl_table[lpn].ppn / NR_PAGES_PER_BLOCK;
+	if (!(dftl_table[lpn].psn >= SSD_MAP_TABLE_SIZE)) {
+		int block_id = dftl_table[lpn].psn / SSD_NR_PAGES_PER_BLOCK;
 		dftl_blocks[block_id].dirty += 1;
 	}
 
 	block = dftl_free_block();
 
-	ppn = block->id * NR_PAGES_PER_BLOCK + NR_PAGES_PER_BLOCK - block->clean;
+	psn = block->id * SSD_NR_PAGES_PER_BLOCK + SSD_NR_PAGES_PER_BLOCK - block->clean;
 	block->clean -= 1;
-	dftl_table[lpn].ppn = ppn;
+	dftl_table[lpn].psn = psn;
 	dftl_table[lpn].block = block->id;
 	dftl_table[lpn].cached = true;
 	dftl_table[lpn].dirty = true;
 
-	return ppn;
+	return psn;
 }
 
 struct ftl dftl = { dftl_init, dftl_read, dftl_write };
