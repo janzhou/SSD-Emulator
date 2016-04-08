@@ -127,6 +127,7 @@ static int ssd_transfer(struct request *req)
 	int dir = rq_data_dir(req);
 	sector_t start_sector = blk_rq_pos(req);
 	unsigned int nr_sectors = blk_rq_sectors(req);
+	unsigned int lba;
 
 	struct bio_vec bv;
 	struct req_iterator iter;
@@ -145,30 +146,33 @@ static int ssd_transfer(struct request *req)
 		buff = page_address(bv.bv_page) + bv.bv_offset;
 		sectors = bv.bv_len / SSD_SECTOR_SIZE;
 
+		if (sectors > SSD_REQUEST_SIZE)
+			return -EIO;
+
 //		PINFO("Bio: Sector offset: %lu; buff: %p; Length: %u (%d sectors)\n",
 //				sector_offset, buff, bv.bv_len, sectors);
 
-		request_map.lba = start_sector + sector_offset;
 		request_map.dir = dir;
-//		request_map.num_sectors = sectors;
-		request_map.num_sectors = 1;
+		request_map.num_sectors = sectors;
+		request_map.start_lba = start_sector + sector_offset;
 
-		for (i = 0; i < sectors; i++, request_map.lba++) {
-
-//			lba_wait_flag = 1;
-//			wake_up_interruptible(&sector_lba_wq);
+		/* Synchronize with the user */
+//		lba_wait_flag = 1;
+//		wake_up_interruptible(&sector_lba_wq);
 //
-//			wait_event_interruptible(sector_ppn_wq, ppn_wait_flag);
-//			ppn_wait_flag = 0;
-			request_map.psn = request_map.lba;
+//		wait_event_interruptible(sector_ppn_wq, ppn_wait_flag);
+//		ppn_wait_flag = 0;
 
+		/* Perform I/O */
+		lba = request_map.start_lba;
+		for (i = 0; i < sectors; i++, lba++) {
 			temp_buff = buff + i * SSD_SECTOR_SIZE;
-//			PINFO("[%d]: temp_buff: %p\n", i, temp_buff);
+			request_map.psn[i] = lba;
 
 			if (dir == WRITE)
-				ssd_dev_write(request_map.psn, request_map.lba, temp_buff);
+				ssd_dev_write(request_map.psn[i], request_map.start_lba, temp_buff);
 			else
-				ssd_dev_read(request_map.psn, request_map.lba, temp_buff);
+				ssd_dev_read(request_map.psn[i], request_map.start_lba, temp_buff);
 		}
 
 		sector_offset += sectors;

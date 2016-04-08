@@ -7,6 +7,8 @@
 #define SSD_BLKDEV_GET_LBN		_IOR(SSD_BLKDEV_MAGIC, 1, unsigned long)
 #define SSD_BLKDEV_SET_PPN		_IOW(SSD_BLKDEV_MAGIC, 2, unsigned long)
 
+#define SSD_REQUEST_SIZE	8
+
 /*
  * sector_request_map: Holds the mapping information. Used to
  * communicate with the user-space.
@@ -16,10 +18,10 @@
  * dir: Direction: 1-Write; 0-Read
  */
 struct sector_request_map {
-	unsigned long lba;
-	unsigned long psn;
 	int dir;
 	unsigned int num_sectors;
+	unsigned long start_lba;
+	unsigned long psn[SSD_REQUEST_SIZE];
 };
 
 

@@ -17,7 +17,7 @@ static unsigned long req_cnt;
 
 int main()
 {
-	int fd;
+	int fd, i;
 	struct sigaction sig_action;
 	sigset_t block_mask;
 
@@ -35,17 +35,19 @@ int main()
 	while (1) {
 		ioctl(fd, SSD_BLKDEV_GET_LBN, &request_map);
 
-		if (request_map.dir == READ)
-			request_map.psn = ftl->read(request_map.lba);
-		else
-			request_map.psn = ftl->write(request_map.lba);
+		for (i = 0; i < request_map.num_sectors; i++) {
 
-//		if (request_map.num_sectors != 8)
-//			printf("[%lu] Request LBA: %lu; PPN: %lu; Size: %u sectors; Dir: %d\n",
-//					++req_cnt, request_map.lba, request_map.psn,
-//					request_map.num_sectors, request_map.dir);
+			if (request_map.dir == READ)
+				request_map.psn[i] = ftl->read(request_map.start_lba + i);
+			else
+				request_map.psn[i] = ftl->write(request_map.start_lba + i);
 
-//		request_map.ppn = request_map.lba;
+			printf("[%lu] Request LBA: %lu; PPN: %lu; Size: %u sectors; Dir: %d\n",
+					++req_cnt, request_map.start_lba + i, request_map.psn[i],
+					request_map.num_sectors, request_map.dir);
+
+//				request_map.ppn = request_map.lba;
+		}
 
 		ioctl(fd, SSD_BLKDEV_SET_PPN, &request_map);
 	}
