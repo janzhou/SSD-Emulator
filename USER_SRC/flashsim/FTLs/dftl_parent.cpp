@@ -132,6 +132,9 @@ long FtlImpl_DftlParent::get_free_data_page(Event &event, bool insert_events)
 	else
 		currentDataPage++;
 
+//	if (currentDataPage == 0)
+//		currentDataPage++;
+
 	return currentDataPage;
 }
 

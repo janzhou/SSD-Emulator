@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-Wall -c
+CXXFLAGS=-Wall -c -g
 LDFLAGS=
 HEADERS=ssd.h
 SOURCES_SSDLIB = $(filter-out ssd_ftl.cpp, $(wildcard ssd_*.cpp))  \

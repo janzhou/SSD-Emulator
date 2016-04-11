@@ -36,6 +36,9 @@
 #include <errno.h>
 #include <limits.h>
 
+#include "../../KERN_SRC/ssd_blkdev.h"
+extern struct sector_request_map request_map;
+
 using namespace ssd;
 
 /* use caution when editing the initialization list - initialization actually
@@ -168,6 +171,8 @@ double Ssd::event_arrive(enum event_type type, ulong logical_address, uint size,
 		fprintf(stderr, "Ssd error: %s: request failed:\n", __func__);
 		event -> print(stderr);
 	}
+
+	request_map.ppn = event->get_address().real_address;
 
 	/* use start_time as a temporary for returning time taken to service event */
 	start_time = event -> get_time_taken();
