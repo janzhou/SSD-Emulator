@@ -6,12 +6,12 @@ void user_ftl_init(void) {
 }
 
 uint32_t user_ftl_read(uint32_t lpn) {
-  usleep(FLASH_PAGE_READ_DELAY);
+//  usleep(FLASH_PAGE_READ_DELAY);
   return lpn;
 }
 
 uint32_t user_ftl_write(uint32_t lpn) {
-  usleep(FLASH_PAGE_WRITE_DELAY);
+//  usleep(FLASH_PAGE_WRITE_DELAY);
   return lpn;
 }
 

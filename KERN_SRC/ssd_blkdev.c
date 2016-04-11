@@ -25,7 +25,10 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #define SSD_DEV_MAX_MINORS 4
 
-static struct sector_request_map request_map;
+//#define SSD_INVOLVE_USER
+
+static struct sector_request_map *request_map;
+static unsigned int request_size;
 
 static struct gendisk *ssd_disk;
 static struct request_queue *ssd_queue;
@@ -33,8 +36,9 @@ static spinlock_t ssd_lck;
 
 static wait_queue_head_t sector_lba_wq;
 static wait_queue_head_t sector_ppn_wq;
+static wait_queue_head_t req_size_wq;
 
-static u8 lba_wait_flag, ppn_wait_flag;
+static u8 lba_wait_flag, ppn_wait_flag, req_size_flag;
 
 static struct task_struct *user_app;
 
@@ -43,6 +47,7 @@ struct ssd_page_buff {
 };
 
 static struct ssd_page_buff ssd_page_buff;
+
 static void *ssd_dev_data;
 
 int major;
@@ -55,14 +60,20 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 		user_app = current;
 		break;
 
+	case SSD_BLKDEV_GET_REQ_SIZE:
+		wait_event_interruptible(req_size_wq, req_size_flag);
+		put_user(request_size, (unsigned long __user *) arg);
+		req_size_flag = 0;
+		break;
+
 	case SSD_BLKDEV_GET_LBN:
 		wait_event_interruptible(sector_lba_wq, lba_wait_flag);
-		copy_to_user((struct sector_request_map __user *) arg, &request_map, sizeof(request_map));
+		copy_to_user((struct sector_request_map __user *) arg, request_map, sizeof(*request_map) * request_size);
 		lba_wait_flag = 0;
 		break;
 
 	case SSD_BLKDEV_SET_PPN:
-		copy_from_user(&request_map, (struct sector_request_map __user *) arg, sizeof(request_map));
+		copy_from_user(request_map, (struct sector_request_map __user *) arg, sizeof(*request_map) * request_size);
 		ppn_wait_flag = 1;
 		wake_up_interruptible(&sector_ppn_wq);
 		break;
@@ -74,7 +85,7 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 	return 0;
 }
 
-static void ssd_dev_read_page(unsigned long psn, unsigned long lba)
+static void ssd_dev_read_page(unsigned long psn)
 {
 	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
 //	PINFO("Read: PPN: %lu\n", ppn);
@@ -82,7 +93,7 @@ static void ssd_dev_read_page(unsigned long psn, unsigned long lba)
 	memcpy(ssd_page_buff.buff, ssd_dev_data + ppn * SSD_PAGE_SIZE, SSD_PAGE_SIZE);
 }
 
-static void ssd_dev_read(unsigned long psn, unsigned long lba, u8 *buff)
+static void ssd_dev_read(unsigned long psn, u8 *buff)
 {
 	unsigned long sector_offset;
 
@@ -93,7 +104,7 @@ static void ssd_dev_read(unsigned long psn, unsigned long lba, u8 *buff)
 //	PINFO("Read: PSN: %lu\n", psn);
 
 	/* Read the page from the disk to the page buffer */
-	ssd_dev_read_page(psn, lba);
+	ssd_dev_read_page(psn);
 
 	/* Pick the requested sector and put the data into the buffer */
 	sector_offset = psn % SSD_NR_SECTORS_PER_PAGE;
@@ -101,25 +112,25 @@ static void ssd_dev_read(unsigned long psn, unsigned long lba, u8 *buff)
 	memcpy(buff, ssd_page_buff.buff + sector_offset * SSD_SECTOR_SIZE, SSD_SECTOR_SIZE);
 }
 
-static void ssd_dev_write_page(unsigned long psn, unsigned long lba)
+static void ssd_dev_write_page(unsigned long psn)
 {
 	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
 
 	memcpy(ssd_dev_data + ppn * SSD_PAGE_SIZE, ssd_page_buff.buff, SSD_PAGE_SIZE);
 }
 
-static void ssd_dev_write(unsigned long psn, unsigned long lba, u8 *buff)
+static void ssd_dev_write(unsigned long psn, u8 *buff)
 {
 	unsigned long sector_offset;
 
 	/* Perform a Read-Modify-Update Operation */
-	ssd_dev_read_page(psn, lba);
+	ssd_dev_read_page(psn);
 
 	sector_offset = psn % SSD_NR_SECTORS_PER_PAGE;
 	memcpy(ssd_page_buff.buff + sector_offset * SSD_SECTOR_SIZE,
 			buff, SSD_SECTOR_SIZE);
 
-	ssd_dev_write_page(psn, lba);
+	ssd_dev_write_page(psn);
 }
 
 static int ssd_transfer(struct request *req)
@@ -127,56 +138,84 @@ static int ssd_transfer(struct request *req)
 	int dir = rq_data_dir(req);
 	sector_t start_sector = blk_rq_pos(req);
 	unsigned int nr_sectors = blk_rq_sectors(req);
-	unsigned int lba;
 
 	struct bio_vec bv;
 	struct req_iterator iter;
-
 	sector_t sector_offset = 0;
-	unsigned int sectors;
-	void *buff, *temp_buff;
+
+	void *temp_buff;
 
 	int ret = 0;
-	int i;
+	int i, j;
 
-//	PINFO("Request: Dir: %d; Sector: %lu; Cnt: %d\n",
-//			dir, start_sector, nr_sectors);
+	request_size = nr_sectors / SSD_REQUEST_SIZE;
+	if (request_size == 0)
+		request_size = 1;
+#ifdef SSD_INVOLVE_USER
+	req_size_flag = 1;
+	wake_up_interruptible(&req_size_wq);
+#endif
 
+	request_map = kzalloc(request_size * sizeof(struct sector_request_map), GFP_KERNEL);
+	if (!request_map)
+		return -ENOMEM;
+
+//	PINFO("Request: Dir: %d; Sector: %lu; Cnt: %d; Request_size: %u\n",
+//			dir, start_sector, nr_sectors, request_size);
+
+	/* Buffer requests */
+	i = 0;
 	rq_for_each_segment(bv, req, iter) {
-		buff = page_address(bv.bv_page) + bv.bv_offset;
-		sectors = bv.bv_len / SSD_SECTOR_SIZE;
+		struct sector_request_map *req_map = &request_map[i];
 
-		if (sectors > SSD_REQUEST_SIZE)
+		req_map->request_buff = page_address(bv.bv_page) + bv.bv_offset;
+		req_map->num_sectors = bv.bv_len / SSD_SECTOR_SIZE;
+		if (req_map->num_sectors > SSD_REQUEST_SIZE)
 			return -EIO;
 
-//		PINFO("Bio: Sector offset: %lu; buff: %p; Length: %u (%d sectors)\n",
-//				sector_offset, buff, bv.bv_len, sectors);
+//		PINFO("Bio1: Sector offset: %lu; buff: %p; Length: %u (%d sectors)\n",
+//				sector_offset, req_map->request_buff, bv.bv_len, req_map->num_sectors);
 
-		request_map.dir = dir;
-		request_map.num_sectors = sectors;
-		request_map.start_lba = start_sector + sector_offset;
+		req_map->dir = dir;
+		req_map->start_lba = start_sector + sector_offset;
 
-		/* Synchronize with the user */
-//		lba_wait_flag = 1;
-//		wake_up_interruptible(&sector_lba_wq);
-//
-//		wait_event_interruptible(sector_ppn_wq, ppn_wait_flag);
-//		ppn_wait_flag = 0;
-
-		/* Perform I/O */
-		lba = request_map.start_lba;
-		for (i = 0; i < sectors; i++, lba++) {
-			temp_buff = buff + i * SSD_SECTOR_SIZE;
-			request_map.psn[i] = lba;
-
-			if (dir == WRITE)
-				ssd_dev_write(request_map.psn[i], request_map.start_lba, temp_buff);
-			else
-				ssd_dev_read(request_map.psn[i], request_map.start_lba, temp_buff);
-		}
-
-		sector_offset += sectors;
+		sector_offset += req_map->num_sectors;
+		i++;
 	}
+
+	/* Synchronize with the user */
+#ifdef SSD_INVOLVE_USER
+	lba_wait_flag = 1;
+	wake_up_interruptible(&sector_lba_wq);
+
+	wait_event_interruptible(sector_ppn_wq, ppn_wait_flag);
+	ppn_wait_flag = 0;
+#endif
+
+	/* Perform I/O */
+	for (i = 0; i < request_size; i++) {
+		struct sector_request_map *req_map = &request_map[i];
+#ifndef SSD_INVOLVE_USER
+		unsigned int lba = req_map->start_lba;
+#endif
+
+//		PINFO("Bio2: buff: %p; Length: %d sectors\n",
+//				req_map->request_buff, req_map->num_sectors);
+
+		for (j = 0; j < req_map->num_sectors; j++) {
+			temp_buff = req_map->request_buff + j * SSD_SECTOR_SIZE;
+#ifndef SSD_INVOLVE_USER
+			req_map->psn[j] = lba++;
+#endif
+
+			if (req_map->dir == WRITE)
+				ssd_dev_write(req_map->psn[j], temp_buff);
+			else
+				ssd_dev_read(req_map->psn[j], temp_buff);
+		}
+	}
+
+	kfree(request_map);
 
 	if (sector_offset != nr_sectors) {
 		PERR("Bio info doesn't match with req info\n");
@@ -284,6 +323,7 @@ static int __init ssd_blkdev_init(void)
 
 	init_waitqueue_head(&sector_lba_wq);
 	init_waitqueue_head(&sector_ppn_wq);
+	init_waitqueue_head(&req_size_wq);
 
 	return 0;
 

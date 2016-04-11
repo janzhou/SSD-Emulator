@@ -4,8 +4,9 @@
 #define SSD_BLKDEV_MAGIC	'x'
 
 #define SSD_BLKDEV_REGISTER_APP	_IO(SSD_BLKDEV_MAGIC, 0)
-#define SSD_BLKDEV_GET_LBN		_IOR(SSD_BLKDEV_MAGIC, 1, unsigned long)
-#define SSD_BLKDEV_SET_PPN		_IOW(SSD_BLKDEV_MAGIC, 2, unsigned long)
+#define SSD_BLKDEV_GET_REQ_SIZE	_IOR(SSD_BLKDEV_MAGIC, 1, unsigned long)
+#define SSD_BLKDEV_GET_LBN		_IOR(SSD_BLKDEV_MAGIC, 2, unsigned long)
+#define SSD_BLKDEV_SET_PPN		_IOW(SSD_BLKDEV_MAGIC, 3, unsigned long)
 
 #define SSD_REQUEST_SIZE	8
 
@@ -22,6 +23,7 @@ struct sector_request_map {
 	unsigned int num_sectors;
 	unsigned long start_lba;
 	unsigned long psn[SSD_REQUEST_SIZE];
+	void *request_buff;
 };
 
 
