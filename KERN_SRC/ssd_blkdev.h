@@ -27,12 +27,12 @@ struct sector_request_map {
 };
 
 
-#define SSD_NR_BLOCKS 128
-#define SSD_NR_PAGES_PER_BLOCK 1024
+#define SSD_NR_BLOCKS (unsigned long) 512
+#define SSD_NR_PAGES_PER_BLOCK (unsigned long) 1024
 #define SSD_NR_PAGES (SSD_NR_BLOCKS * SSD_NR_PAGES_PER_BLOCK)
 
-#define SSD_PAGE_SIZE	4096
-#define SSD_SECTOR_SIZE	 512
+#define SSD_PAGE_SIZE	(unsigned long) 4096
+#define SSD_SECTOR_SIZE	 (unsigned long) 512
 #define SSD_NR_SECTORS_PER_PAGE		(SSD_PAGE_SIZE / SSD_SECTOR_SIZE)
 
 #define SSD_TOTAL_SIZE	(SSD_NR_BLOCKS * SSD_NR_PAGES_PER_BLOCK * SSD_NR_SECTORS_PER_PAGE * SSD_SECTOR_SIZE)
