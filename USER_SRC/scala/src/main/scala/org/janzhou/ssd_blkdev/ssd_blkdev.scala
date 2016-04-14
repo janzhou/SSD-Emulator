@@ -1,6 +1,7 @@
 package org.janzhou.ssd_blkdev
 
 import com.sun.jna._
+import org.janzhou.ftl._
 
 object main {
 
@@ -21,6 +22,18 @@ object main {
       libc.run().close(fd);
     })
 
+    val device = new Device()
+    val ftl:FTL = if( args.isEmpty ) {
+      new DirectFTL(device)
+    } else {
+      args(0) match {
+        case "DirectFTL" => new DirectFTL(device)
+        case "DFTL" => new DFTL(device)
+        case "dftl" => new DFTL(device)
+        case _ => new DirectFTL(device)
+      }
+    }
+
     while (true) {
       libc.run.ioctl(fd, 0x80087801, req_size) //SSD_BLKDEV_GET_REQ_SIZE
       println("req_size = " + req_size.getLong(0) + " " + req_size.getInt(0))
@@ -39,7 +52,11 @@ object main {
 
         for( i <- 0 to num_sectors - 1 ) {
           println("lba = " + start_lba + i)
-          request_map.setLong(psn_offset + i * 8, start_lba + i)
+          if( dir == 0 ) {
+            request_map.setLong(psn_offset + i * 8, ftl.read(start_lba + i))
+          } else {
+            request_map.setLong(psn_offset + i * 8, ftl.write(start_lba + i))
+          }
         }
       }
 
