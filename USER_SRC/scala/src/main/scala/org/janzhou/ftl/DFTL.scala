@@ -1,5 +1,7 @@
 package org.janzhou.ftl
 
+import java.util.concurrent.TimeUnit
+
 class DFTL(device:Device) extends FTL(device) {
 
   println("DFTL")
@@ -29,7 +31,34 @@ class DFTL(device:Device) extends FTL(device) {
   }
   var dftl_cache = List[dftl_mapping_entry]()
 
+  private def sleep(time:Int):Unit = {
+    TimeUnit.MICROSECONDS.sleep(time)
+  }
+
+  def clean_cache = {
+    while( dftl_cache.length > device.CacheSize ) {
+      val cache = dftl_cache.head
+
+      if ( cache.dirty ) {
+        sleep(device.PageReadDelay)
+        sleep(device.PageWriteDelay)
+
+        dftl_cache = dftl_cache.drop(1)
+      }
+    }
+  }
+
   def read(lpn:Int):Int = {
+    if ( dftl_table(lpn).cached == false ) {
+      dftl_table(lpn).cached = true
+      dftl_table(lpn).dirty = false
+
+      dftl_cache = dftl_cache :+ dftl_table(lpn)
+
+      sleep(device.PageReadDelay)
+    }
+
+    sleep(device.PageReadDelay) //data
     dftl_table(lpn).ppn
   }
 
@@ -37,6 +66,10 @@ class DFTL(device:Device) extends FTL(device) {
 
   def trim(lpn:Int):Unit = {
     if ( dftl_table(lpn).block != null ) {
+      if ( dftl_table(lpn).cached == false ) {
+        sleep(device.PageReadDelay)
+      }
+
       val block = dftl_table(lpn).block
       block.lpns = block.lpns.filter(_ != lpn)
       block.dirty += 1
@@ -47,8 +80,10 @@ class DFTL(device:Device) extends FTL(device) {
 
       dftl_table(lpn).block = null
       dftl_table(lpn).ppn = 0
-      dftl_table(lpn).cached = false
-      dftl_table(lpn).dirty = false
+      dftl_table(lpn).cached = true
+      dftl_table(lpn).dirty = true
+
+      dftl_cache = dftl_cache :+ dftl_table(lpn)
     }
   }
 
@@ -65,11 +100,10 @@ class DFTL(device:Device) extends FTL(device) {
     }
     block.lpns = block.lpns :+ lpn
 
-    dftl_table(lpn).ppn = ppn
     dftl_table(lpn).block = block
-    dftl_table(lpn).cached = true
-    dftl_table(lpn).cached = false
+    dftl_table(lpn).ppn = ppn
 
+    sleep(device.PageWriteDelay) //data
     ppn
   }
 }
