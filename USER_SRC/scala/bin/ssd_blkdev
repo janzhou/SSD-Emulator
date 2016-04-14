@@ -1,0 +1,39 @@
+#!/bin/bash
+
+get_sbt(){
+  [ ! -d 'target' ] && mkdir target
+  [ ! -f 'target/sbt' ] && cd target \
+  && wget https://raw.githubusercontent.com/paulp/sbt-extras/master/sbt \
+  && chmod 0755 sbt && cd ..
+}
+
+sbt(){
+  get_sbt
+  # [ -f jvm-opts ] && cmd="target/sbt -jvm-opts jvm-opts $*" || cmd="target/sbt -jvm-opts bin/jvm-opts $*"
+  cmd="target/sbt $*"
+  echo $cmd
+  $cmd
+}
+
+build(){
+  sbt assembly
+}
+
+build.sbt(){
+  sbt assembly
+}
+
+run(){
+    scalaDir="target/scala-2.11"
+    target=$(ls -t1 ${scalaDir}/ssd_blkdev-assembly-*.jar |  head -n 1)
+    testClass="${scalaDir}/test-classes"
+    [ -f jvm-opts ] && cmd="java $(cat jvm-opts) -cp ${target}:${testClass} $*" || cmd="java $(cat bin/jvm-opts) -cp ${target}:${testClass} $*"
+    echo $cmd
+    $cmd
+}
+
+test(){
+  run org.janzhou.ssd_blkdev.main
+}
+
+$*
