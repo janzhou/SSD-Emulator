@@ -30,8 +30,6 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 static struct sector_request_map *request_map;
 static unsigned int request_size;
 
-static LIST_HEAD(ssd_request_list_head);
-
 static struct work_struct ssd_request_wrk;
 
 static struct gendisk *ssd_disk;
@@ -298,7 +296,7 @@ static int ssd_dev_create(void)
 	sprintf(ssd_disk->disk_name, "ssd_ramdisk");
 	set_capacity(ssd_disk, SSD_NR_PAGES * SSD_NR_SECTORS_PER_PAGE);
 
-	/* Allocate SSD flash memory and page buffer */
+	/* Allocate SSD flash memory */
 	ssd_dev_data = vzalloc(SSD_TOTAL_SIZE);
 	if (!ssd_dev_data) {
 		PERR("Failed to allocate memory for the disk space\n");
