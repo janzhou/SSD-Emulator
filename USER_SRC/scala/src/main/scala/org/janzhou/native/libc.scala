@@ -1,4 +1,4 @@
-package org.janzhou.ssd_blkdev
+package org.janzhou.native
 
 import com.sun.jna._
 

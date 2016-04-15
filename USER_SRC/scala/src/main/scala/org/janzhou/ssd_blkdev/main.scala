@@ -2,6 +2,9 @@ package org.janzhou.ssd_blkdev
 
 import com.sun.jna._
 import org.janzhou.ftl._
+import org.janzhou.native._
+import java.util.Calendar
+import java.text.SimpleDateFormat
 
 object main {
 
@@ -22,7 +25,7 @@ object main {
       libc.run().close(fd);
     })
 
-    val device = new Device()
+    val device = new Device(fd)
     val ftl:FTL = if( args.isEmpty ) {
       new DirectFTL(device)
     } else {
@@ -36,9 +39,9 @@ object main {
       }
     }
 
+    val time = new SimpleDateFormat("HH:mm:ss")
     while (true) {
       libc.run.ioctl(fd, 0x80087801, req_size) //SSD_BLKDEV_GET_REQ_SIZE
-      println("req_size = " + req_size.getLong(0) + " " + req_size.getInt(0))
 
       val request_map = libc.run().calloc(req_size.getInt(0), 88) //sizeof(*request_map)
       libc.run.ioctl(fd, 0x80087802, request_map) //SSD_BLKDEV_GET_LBN
@@ -50,15 +53,18 @@ object main {
         val start_lba = request_map.getInt(offset + 8)
         val psn_offset = offset + 16
 
-        println("dir " + dir + " num_sectors " + num_sectors + " start_lba " + start_lba)
-
         for( i <- 0 to num_sectors - 1 ) {
-          println("lba = " + start_lba + i)
-          if( dir == 0 ) {
-            request_map.setLong(psn_offset + i * 8, ftl.read(start_lba + i))
+          val lpn = start_lba + i
+          val ppn = if( dir == 0 ) {
+            val ppn = ftl.read(lpn)
+            println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
+            ppn
           } else {
-            request_map.setLong(psn_offset + i * 8, ftl.write(start_lba + i))
+            val ppn = ftl.write(lpn)
+            println(time.format(Calendar.getInstance().getTime()) + " W " + lpn + " " + ppn)
+            ppn
           }
+          request_map.setLong(psn_offset + i * 8, ppn)
         }
       }
 
