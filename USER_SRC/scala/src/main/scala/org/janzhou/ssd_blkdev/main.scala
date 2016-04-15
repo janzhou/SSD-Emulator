@@ -30,6 +30,8 @@ object main {
         case "DirectFTL" => new DirectFTL(device)
         case "DFTL" => new DFTL(device)
         case "dftl" => new DFTL(device)
+        case "CPFTL" => new CPFTL(device)
+        case "cpftl" => new CPFTL(device)
         case _ => new DirectFTL(device)
       }
     }
