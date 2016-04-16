@@ -10,29 +10,50 @@
 
 #define SSD_REQUEST_SIZE	8
 
+enum ssd_transfer_direction {
+	SSD_DIR_READ,
+	SSD_DIR_WRITE
+};
+
 /*
- * sector_request_map: Holds the mapping information. Used to
+ * ssd_page_map: Holds the mapping information. Used to
  * communicate with the user-space.
  *
- * lba: Logical Block Address- Supplied by FS layer
- * psn: Physical sector number- Obtained from mapping table
+ * lpn: Logical Page Number. Calculated by the kernel
+ * ppn: Physical Page Number. Given by the user, based on a map of lpn
+ * new_ppn: New physical page number. Offered by the user only for writes
  * dir: Direction: 1-Write; 0-Read
  */
-struct sector_request_map {
-	int dir;
-	unsigned int num_sectors;
-	unsigned long start_lba;
-	unsigned long psn[SSD_REQUEST_SIZE];
+struct ssd_page_map {
+	unsigned long lpn;
+	unsigned long ppn;
+	unsigned long new_ppn;
+	enum ssd_transfer_direction dir;
+};
+
+/*
+ * sector_request_map: Holds the mapping information plus additional
+ * information to process the I/O
+ *
+ * page_map: The page map information obtained from the user
+ * start_sector: The starting sector number (as per the kernel)
+ * num_sectors: Number of sectors to read/write
+ * request_buff: Pointer to kernel's read/write buffer
+ */
+struct ssd_request_map {
+	struct ssd_page_map page_map;
+	unsigned long start_sector;
+	unsigned long num_sectors;
 	void *request_buff;
 };
 
 
-#define SSD_NR_BLOCKS 128
-#define SSD_NR_PAGES_PER_BLOCK 1024
+#define SSD_NR_BLOCKS (unsigned long) 128
+#define SSD_NR_PAGES_PER_BLOCK (unsigned long) 1024
 #define SSD_NR_PAGES (SSD_NR_BLOCKS * SSD_NR_PAGES_PER_BLOCK)
 
-#define SSD_PAGE_SIZE	4096
-#define SSD_SECTOR_SIZE	 512
+#define SSD_PAGE_SIZE	(unsigned long) 4096
+#define SSD_SECTOR_SIZE	 (unsigned long) 512
 #define SSD_NR_SECTORS_PER_PAGE		(SSD_PAGE_SIZE / SSD_SECTOR_SIZE)
 
 #define SSD_TOTAL_SIZE	(SSD_NR_BLOCKS * SSD_NR_PAGES_PER_BLOCK * SSD_NR_SECTORS_PER_PAGE * SSD_SECTOR_SIZE)
