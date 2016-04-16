@@ -1,8 +1,10 @@
 package org.janzhou.ftl
 
 import com.typesafe.config.ConfigFactory
+import java.util.concurrent.TimeUnit
+import org.janzhou.native._
 
-class Device(config:String = "default") {
+class Device(fd:Int = 0, config:String = "default") {
   private val _config = ConfigFactory.load(config)
 
   val NumberOfBlocks = _config.getInt("SSD.NumberOfBlocks")
@@ -11,11 +13,17 @@ class Device(config:String = "default") {
   val TotalPages = NumberOfBlocks * PagesPerBlock
   val ReserveSpace = _config.getInt("SSD.ReserveSpace")
 
-  val PageReadDelay = _config.getInt("SSD.PageReadDelay")
-  val PageWriteDelay = _config.getInt("SSD.PageWriteDelay")
-  val BlockEraseDelay = _config.getInt("SSD.BlockEraseDelay")
+  private def sleep(time:Int):Unit = {
+    TimeUnit.MICROSECONDS.sleep(time)
+  }
+
+  def PageReadDelay   = sleep(_config.getInt("SSD.PageReadDelay"))
+  def PageWriteDelay  = sleep(_config.getInt("SSD.PageWriteDelay"))
+  def BlockEraseDelay = sleep(_config.getInt("SSD.BlockEraseDelay"))
 
   val CacheSize = _config.getInt("SSD.CacheSize")
 
-  def move(from_ppn:Int, to_ppn:Int):Unit = {}
+  def move(from:Int, to:Int):Unit = {
+    //libc.call.ioctl(fd, 0x00, Array(from, to))
+  }
 }

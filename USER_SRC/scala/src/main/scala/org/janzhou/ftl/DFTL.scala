@@ -1,7 +1,5 @@
 package org.janzhou.ftl
 
-import java.util.concurrent.TimeUnit
-
 class DFTL(device:Device) extends FTL(device) {
 
   println("DFTL")
@@ -31,17 +29,13 @@ class DFTL(device:Device) extends FTL(device) {
   }
   var dftl_cache = List[dftl_mapping_entry]()
 
-  private def sleep(time:Int):Unit = {
-    TimeUnit.MICROSECONDS.sleep(time)
-  }
-
   def clean_cache = {
     while( dftl_cache.length > device.CacheSize ) {
       val cache = dftl_cache.head
 
       if ( cache.dirty ) {
-        sleep(device.PageReadDelay)
-        sleep(device.PageWriteDelay)
+        device.PageReadDelay
+        device.PageWriteDelay
 
         dftl_cache = dftl_cache.drop(1)
       }
@@ -55,19 +49,60 @@ class DFTL(device:Device) extends FTL(device) {
 
       dftl_cache = dftl_cache :+ dftl_table(lpn)
 
-      sleep(device.PageReadDelay)
+      device.PageReadDelay
     }
 
-    sleep(device.PageReadDelay) //data
+    device.PageReadDelay //data
     dftl_table(lpn).ppn
   }
 
-  def gc = {}
+  def move = {
+    val block = {
+      val candidate_blocks = {
+        var full_blocks = dftl_blocks.filter( _.clean == 0 )
+        if( full_blocks.isEmpty ) {
+          dftl_blocks
+        }
+        full_blocks
+      }
+
+      var gc = candidate_blocks.head
+      for ( b <- candidate_blocks ) {
+        if ( b.dirty > gc.dirty ) {
+          gc = b
+        }
+      }
+      gc
+    }
+
+    for ( lpn <- block.lpns ) {
+      val from = read(lpn)
+      val to = write(lpn)
+      device.move(from, to)
+    }
+
+    gc_block = gc_block :+ block
+  }
+
+  def gc = {
+    if ( gc_block.isEmpty ) {
+      move
+    }
+
+    val block = gc_block.head
+    block.lpns = List[Int]()
+    block.clean = device.PagesPerBlock
+    block.dirty = 0
+    gc_block = gc_block.drop(1)
+    free_block = free_block :+ block
+
+    device.BlockEraseDelay
+  }
 
   def trim(lpn:Int):Unit = {
     if ( dftl_table(lpn).block != null ) {
       if ( dftl_table(lpn).cached == false ) {
-        sleep(device.PageReadDelay)
+        device.PageReadDelay
       }
 
       val block = dftl_table(lpn).block
@@ -103,7 +138,7 @@ class DFTL(device:Device) extends FTL(device) {
     dftl_table(lpn).block = block
     dftl_table(lpn).ppn = ppn
 
-    sleep(device.PageWriteDelay) //data
+    device.PageWriteDelay //data
     ppn
   }
 }

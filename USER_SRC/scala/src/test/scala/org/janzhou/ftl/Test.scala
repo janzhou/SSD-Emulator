@@ -4,11 +4,11 @@ object Test {
   def main (args: Array[String]) {
     val ftl = new DFTL(new Device())
 
-    println("read " + 1 + " ppn " + ftl.read(1))
+    for ( i <- 1 to 8195 ) {
+      println("write " + 1 + " ppn " + ftl.write(1))
+    }
+    println("write " + 0 + " ppn " + ftl.write(0))
     println("write " + 1 + " ppn " + ftl.write(1))
-    println("write " + 2 + " ppn " + ftl.write(2))
-    println("read " + 1 + " ppn " + ftl.read(1))
-    println("write " + 1 + " ppn " + ftl.write(1))
-    println("read " + 1 + " ppn " + ftl.read(1))
+    ftl.gc
   }
 }
