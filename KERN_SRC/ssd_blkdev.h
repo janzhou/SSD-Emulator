@@ -40,7 +40,7 @@ struct ssd_page_map {
  * num_sectors: Number of sectors to read/write
  * request_buff: Pointer to kernel's read/write buffer
  */
-struct sector_request_map {
+struct ssd_request_map {
 	struct ssd_page_map page_map;
 	unsigned long start_sector;
 	unsigned long num_sectors;

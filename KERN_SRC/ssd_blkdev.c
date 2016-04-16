@@ -25,9 +25,9 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #define SSD_DEV_MAX_MINORS 4
 
-//#define SSD_INVOLVE_USER
+#define SSD_INVOLVE_USER
 
-static struct sector_request_map *request_map;
+static struct ssd_request_map *request_map;
 static unsigned int request_size;
 
 static struct work_struct ssd_request_wrk;
@@ -70,12 +70,12 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 
 	case SSD_BLKDEV_GET_LBN:
 		wait_event_interruptible(sector_lba_wq, lba_wait_flag);
-		copy_to_user((struct sector_request_map __user *) arg, request_map, sizeof(*request_map) * request_size);
+		copy_to_user((struct ssd_request_map __user *) arg, request_map, sizeof(*request_map) * request_size);
 		lba_wait_flag = 0;
 		break;
 
 	case SSD_BLKDEV_SET_PPN:
-		copy_from_user(request_map, (struct sector_request_map __user *) arg, sizeof(*request_map) * request_size);
+		copy_from_user(request_map, (struct ssd_request_map __user *) arg, sizeof(*request_map) * request_size);
 		ppn_wait_flag = 1;
 		wake_up_interruptible(&sector_ppn_wq);
 		break;
@@ -97,7 +97,7 @@ static void ssd_dev_read_page(unsigned long ppn)
 	memcpy(ssd_page_buff.buff, ssd_dev_data + ppn * SSD_PAGE_SIZE, SSD_PAGE_SIZE);
 }
 
-static void ssd_dev_read(struct sector_request_map *req_map)
+static void ssd_dev_read(struct ssd_request_map *req_map)
 {
 	struct ssd_page_map *page_map = &req_map->page_map;
 	unsigned long ppn = page_map->ppn;
@@ -127,7 +127,7 @@ static void ssd_dev_write_page(unsigned long new_ppn)
 			ssd_page_buff.buff, SSD_PAGE_SIZE);
 }
 
-static void ssd_dev_write(struct sector_request_map *req_map)
+static void ssd_dev_write(struct ssd_request_map *req_map)
 {
 	struct ssd_page_map *page_map = &req_map->page_map;
 	unsigned long ppn = page_map->ppn;
@@ -167,7 +167,7 @@ static int ssd_transfer(struct request *req)
 	wake_up_interruptible(&req_size_wq);
 #endif
 
-	request_map = kzalloc(request_size * sizeof(struct sector_request_map), GFP_KERNEL);
+	request_map = kzalloc(request_size * sizeof(struct ssd_request_map), GFP_KERNEL);
 	if (!request_map)
 		return -ENOMEM;
 
@@ -177,7 +177,7 @@ static int ssd_transfer(struct request *req)
 	/* Buffer requests */
 	i = 0;
 	rq_for_each_segment(bv, req, iter) {
-		struct sector_request_map *req_map = &request_map[i++];
+		struct ssd_request_map *req_map = &request_map[i++];
 		struct ssd_page_map *page_map = &req_map->page_map;
 		unsigned long lba = start_sector + sector_offset;
 
@@ -207,7 +207,7 @@ static int ssd_transfer(struct request *req)
 
 	/* Perform I/O */
 	for (i = 0; i < request_size; i++) {
-		struct sector_request_map *req_map = &request_map[i];
+		struct ssd_request_map *req_map = &request_map[i];
 		struct ssd_page_map *page_map = &req_map->page_map;
 
 #ifndef SSD_INVOLVE_USER
