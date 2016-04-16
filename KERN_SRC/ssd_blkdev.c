@@ -50,7 +50,7 @@ struct ssd_page_buff {
 
 static struct ssd_page_buff ssd_page_buff;
 
-static void *ssd_dev_data;
+static u8 ssd_dev_data[SSD_TOTAL_SIZE];
 
 int major;
 
@@ -87,10 +87,8 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 	return 0;
 }
 
-static void ssd_dev_read_page(unsigned long psn)
+static void ssd_dev_read_page(unsigned long ppn)
 {
-	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
-
 	if (ppn >= SSD_TOTAL_SIZE / SSD_PAGE_SIZE) {
 			PERR("Reached read capacity\n");
 			return;
@@ -99,49 +97,53 @@ static void ssd_dev_read_page(unsigned long psn)
 	memcpy(ssd_page_buff.buff, ssd_dev_data + ppn * SSD_PAGE_SIZE, SSD_PAGE_SIZE);
 }
 
-static void ssd_dev_read(unsigned long psn, u8 *buff)
+static void ssd_dev_read(struct sector_request_map *req_map)
 {
-	unsigned long sector_offset;
+	struct ssd_page_map *page_map = &req_map->page_map;
+	unsigned long ppn = page_map->ppn;
+	unsigned long num_sectors = req_map->num_sectors;
+	unsigned short sector_offset = req_map->start_sector % SSD_NR_SECTORS_PER_PAGE;
+	void *kern_buff = req_map->request_buff;
 
 	/* Read before a write request */
-	if (psn == SSD_MAP_TABLE_SIZE)
+	if (ppn == SSD_MAP_TABLE_SIZE)
 		return;
 
-//	PINFO("Read: PSN: %lu\n", psn);
-
 	/* Read the page from the disk to the page buffer */
-	ssd_dev_read_page(psn);
+	ssd_dev_read_page(ppn);
 
-	/* Pick the requested sector and put the data into the buffer */
-	sector_offset = psn % SSD_NR_SECTORS_PER_PAGE;
-//	PINFO("Read: sector_offset: %lu\n", sector_offset);
-	memcpy(buff, ssd_page_buff.buff + sector_offset * SSD_SECTOR_SIZE, SSD_SECTOR_SIZE);
+	memcpy(kern_buff, ssd_page_buff.buff + sector_offset * SSD_SECTOR_SIZE,
+			num_sectors * SSD_SECTOR_SIZE);
 }
 
-static void ssd_dev_write_page(unsigned long psn)
+static void ssd_dev_write_page(unsigned long new_ppn)
 {
-	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
-
-	if (ppn >= SSD_TOTAL_SIZE / SSD_PAGE_SIZE) {
+	if (new_ppn >= SSD_TOTAL_SIZE / SSD_PAGE_SIZE) {
 		PERR("Reached write capacity\n");
 		return;
 	}
 
-	memcpy(ssd_dev_data + ppn * SSD_PAGE_SIZE, ssd_page_buff.buff, SSD_PAGE_SIZE);
+	memcpy(ssd_dev_data + new_ppn * SSD_PAGE_SIZE,
+			ssd_page_buff.buff, SSD_PAGE_SIZE);
 }
 
-static void ssd_dev_write(unsigned long psn, u8 *buff)
+static void ssd_dev_write(struct sector_request_map *req_map)
 {
-	unsigned long sector_offset;
+	struct ssd_page_map *page_map = &req_map->page_map;
+	unsigned long ppn = page_map->ppn;
+	unsigned long new_ppn = page_map->new_ppn;
+	unsigned long num_sectors = req_map->num_sectors;
+	unsigned short sector_offset = req_map->start_sector % SSD_NR_SECTORS_PER_PAGE;
+	void *kern_buff = req_map->request_buff;
 
 	/* Perform a Read-Modify-Update Operation */
-	ssd_dev_read_page(psn);
+	ssd_dev_read_page(ppn);
 
-	sector_offset = psn % SSD_NR_SECTORS_PER_PAGE;
 	memcpy(ssd_page_buff.buff + sector_offset * SSD_SECTOR_SIZE,
-			buff, SSD_SECTOR_SIZE);
+			kern_buff,
+			num_sectors * SSD_SECTOR_SIZE);
 
-	ssd_dev_write_page(psn);
+	ssd_dev_write_page(new_ppn);
 }
 
 static int ssd_transfer(struct request *req)
@@ -154,10 +156,8 @@ static int ssd_transfer(struct request *req)
 	struct req_iterator iter;
 	sector_t sector_offset = 0;
 
-	void *temp_buff;
-
+	int i;
 	int ret = 0;
-	int i, j;
 
 	request_size = nr_sectors / SSD_REQUEST_SIZE;
 	if (request_size == 0)
@@ -177,21 +177,23 @@ static int ssd_transfer(struct request *req)
 	/* Buffer requests */
 	i = 0;
 	rq_for_each_segment(bv, req, iter) {
-		struct sector_request_map *req_map = &request_map[i];
+		struct sector_request_map *req_map = &request_map[i++];
+		struct ssd_page_map *page_map = &req_map->page_map;
+		unsigned long lba = start_sector + sector_offset;
 
+		page_map->lpn = lba / SSD_NR_SECTORS_PER_PAGE;
+		page_map->dir = dir;
+
+		req_map->start_sector = lba;
 		req_map->request_buff = page_address(bv.bv_page) + bv.bv_offset;
 		req_map->num_sectors = bv.bv_len / SSD_SECTOR_SIZE;
 		if (req_map->num_sectors > SSD_REQUEST_SIZE)
 			return -EIO;
 
-//		PINFO("Bio1: Sector offset: %lu; buff: %p; Length: %u (%d sectors)\n",
-//				sector_offset, req_map->request_buff, bv.bv_len, req_map->num_sectors);
-
-		req_map->dir = dir;
-		req_map->start_lba = start_sector + sector_offset;
+//		PINFO("Bio1: Sector offset: %lu; lpn: %lu; Length: %u (%lu sectors)\n",
+//				sector_offset, page_map->lpn, bv.bv_len, req_map->num_sectors);
 
 		sector_offset += req_map->num_sectors;
-		i++;
 	}
 
 	/* Synchronize with the user */
@@ -206,24 +208,16 @@ static int ssd_transfer(struct request *req)
 	/* Perform I/O */
 	for (i = 0; i < request_size; i++) {
 		struct sector_request_map *req_map = &request_map[i];
+		struct ssd_page_map *page_map = &req_map->page_map;
+
 #ifndef SSD_INVOLVE_USER
-		unsigned int lba = req_map->start_lba;
+		page_map->ppn = page_map->new_ppn = page_map->lpn;
 #endif
 
-//		PINFO("Bio2: buff: %p; Length: %d sectors\n",
-//				req_map->request_buff, req_map->num_sectors);
-
-		for (j = 0; j < req_map->num_sectors; j++) {
-			temp_buff = req_map->request_buff + j * SSD_SECTOR_SIZE;
-#ifndef SSD_INVOLVE_USER
-			req_map->psn[j] = lba++;
-#endif
-
-			if (req_map->dir == WRITE)
-				ssd_dev_write(req_map->psn[j], temp_buff);
-			else
-				ssd_dev_read(req_map->psn[j], temp_buff);
-		}
+		if (page_map->dir == READ)
+			ssd_dev_read(req_map);
+		else
+			ssd_dev_write(req_map);
 	}
 
 	kfree(request_map);
@@ -296,18 +290,8 @@ static int ssd_dev_create(void)
 	sprintf(ssd_disk->disk_name, "ssd_ramdisk");
 	set_capacity(ssd_disk, SSD_NR_PAGES * SSD_NR_SECTORS_PER_PAGE);
 
-	/* Allocate SSD flash memory */
-	ssd_dev_data = vzalloc(SSD_TOTAL_SIZE);
-	if (!ssd_dev_data) {
-		PERR("Failed to allocate memory for the disk space\n");
-		ret = -ENOMEM;
-		goto vzalloc_fail;
-	}
-
 	return 0;
 
-vzalloc_fail:
-	put_disk(ssd_disk);
 disk_fail:
 	blk_cleanup_queue(ssd_queue);
 	return ret;
@@ -315,7 +299,6 @@ disk_fail:
 
 static void ssd_dev_destroy(void)
 {
-	vfree(ssd_dev_data);
 	put_disk(ssd_disk);
 	blk_cleanup_queue(ssd_queue);
 }
