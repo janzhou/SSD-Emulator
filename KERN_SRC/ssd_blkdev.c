@@ -25,7 +25,7 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #define SSD_DEV_MAX_MINORS 4
 
-//#define SSD_INVOLVE_USER
+#define SSD_INVOLVE_USER
 
 static struct sector_request_map *request_map;
 static unsigned int request_size;
@@ -61,9 +61,20 @@ static void *ssd_dev_data;
 
 int major;
 
+static void ssd_dev_move_page(struct ssd_move_page ssd_move_page)
+{
+	unsigned long new_ppn = ssd_move_page.new_ppn;
+	unsigned long old_ppn = ssd_move_page.old_ppn;
+
+	memcpy(ssd_dev_data + new_ppn * SSD_PAGE_SIZE,
+			ssd_dev_data + old_ppn * SSD_PAGE_SIZE, SSD_PAGE_SIZE);
+}
+
 static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 		unsigned cmd, unsigned long arg)
 {
+	struct ssd_move_page ssd_move_page;
+
 	switch (cmd) {
 	case SSD_BLKDEV_REGISTER_APP:
 		user_app = current;
@@ -85,6 +96,12 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 		copy_from_user(request_map, (struct sector_request_map __user *) arg, sizeof(*request_map) * request_size);
 		ppn_wait_flag = 1;
 		wake_up_interruptible(&sector_ppn_wq);
+		break;
+
+	case SSD_BLKDEV_MOVE_PAGE:
+		copy_from_user((struct ssd_move_page *) &ssd_move_page,
+		(struct ssd_move_page __user *)arg, sizeof(ssd_move_page));
+		ssd_dev_move_page(ssd_move_page);
 		break;
 
 	default:
@@ -385,7 +402,7 @@ create_fail:
 }
 
 static void __exit ssd_blkdev_exit(void)
-{	
+{
 	del_gendisk(ssd_disk);
 	ssd_dev_destroy();
 	unregister_blkdev(major, SSD_DEV_NAME);

@@ -1,6 +1,12 @@
 FTLs := dftl.o direct_ftl.o user_ftl.o
 CFLAGS := -g
+ALL := variables ftl_main
 
+all: $(ALL)
+
+variables: variables.o
+	gcc -o variables variables.o $(CFLAGS)
+	
 ftl_main: ftl_main.o $(FTLs)
 	gcc -o ftl_main ftl_main.o $(FTLs) $(CFLAGS)
 	
@@ -17,4 +23,4 @@ user_ftl.o: user_ftl.c ftl.h
 	gcc -c user_ftl.c $(CFLAGS)	
 	
 clean:
-	rm -f *.o ftl_main
+	rm -f *.o $(ALL)

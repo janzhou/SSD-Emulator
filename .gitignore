@@ -1,0 +1,12 @@
+.*.mod
+.*.cmd
+.tmp_versions
+Module.symvers
+*.mod.*
+*.o
+*.ko
+modules.order
+*.swp
+
+USER_SRC/ftl/ftl_main
+USER_SRC/ftl/variables

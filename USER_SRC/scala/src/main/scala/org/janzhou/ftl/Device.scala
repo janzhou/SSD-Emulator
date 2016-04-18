@@ -24,6 +24,6 @@ class Device(fd:Int = 0, config:String = "default") {
   val CacheSize = _config.getInt("SSD.CacheSize")
 
   def move(from:Int, to:Int):Unit = {
-    //libc.call.ioctl(fd, 0x00, Array(from, to))
+    libc.call.ioctl(fd, 0x40107804, Array(from, to))
   }
 }
