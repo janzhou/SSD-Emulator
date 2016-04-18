@@ -56,4 +56,10 @@ umount(){
   sudo umount /dev/ssd_ramdisk
 }
 
+kernel(){
+  cd ../../KERN_SRC/
+  make clean
+  make
+}
+
 $*

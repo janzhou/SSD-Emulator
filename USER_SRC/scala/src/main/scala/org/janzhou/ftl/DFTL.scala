@@ -18,7 +18,7 @@ class DFTL(device:Device) extends FTL(device) {
 
   class dftl_mapping_entry(val lpn:Int) {
     var block:dftl_block = null
-    var ppn:Int = 0
+    var ppn:Int = device.TotalPages
     var cached:Boolean = false
     var dirty:Boolean = false
   }
@@ -114,7 +114,7 @@ class DFTL(device:Device) extends FTL(device) {
       }
 
       dftl_table(lpn).block = null
-      dftl_table(lpn).ppn = 0
+      dftl_table(lpn).ppn = device.TotalPages
       dftl_table(lpn).cached = true
       dftl_table(lpn).dirty = true
 

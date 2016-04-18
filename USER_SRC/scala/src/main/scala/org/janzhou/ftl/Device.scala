@@ -9,6 +9,7 @@ class Device(fd:Int = 0, config:String = "default") {
 
   val NumberOfBlocks = _config.getInt("SSD.NumberOfBlocks")
   val PagesPerBlock = _config.getInt("SSD.PagesPerBlock")
+  val SectorsPerPage = _config.getInt("SSD.SectorsPerPage")
 
   val TotalPages = NumberOfBlocks * PagesPerBlock
   val ReserveSpace = _config.getInt("SSD.ReserveSpace")
@@ -23,7 +24,10 @@ class Device(fd:Int = 0, config:String = "default") {
 
   val CacheSize = _config.getInt("SSD.CacheSize")
 
+  val moveArgs = libc.run().malloc(16)
   def move(from:Int, to:Int):Unit = {
-    libc.call.ioctl(fd, 0x40107804, Array(from, to))
+    moveArgs.setLong(0, from)
+    moveArgs.setLong(8, to)
+    libc.call.ioctl(fd, 0x40107804, moveArgs)
   }
 }

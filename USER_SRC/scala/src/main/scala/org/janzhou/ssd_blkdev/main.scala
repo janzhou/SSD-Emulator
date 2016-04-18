@@ -25,7 +25,11 @@ object main {
       libc.run().close(fd);
     })
 
-    val device = new Device(fd)
+    val device = if ( args.length >= 2 ) {
+      new Device(fd, args(1))
+    } else {
+      new Device(fd)
+    }
     val ftl:FTL = if( args.isEmpty ) {
       new DirectFTL(device)
     } else {
@@ -40,6 +44,12 @@ object main {
     }
 
     val time = new SimpleDateFormat("HH:mm:ss")
+
+    var last_dir = 0
+    var last_lpn = 0
+    var last_ppn = ftl.read(last_lpn)
+    println(time.format(Calendar.getInstance().getTime()) + " R " + last_lpn + " " + last_ppn)
+
     while (true) {
       libc.run.ioctl(fd, 0x80087801, req_size) //SSD_BLKDEV_GET_REQ_SIZE
 
@@ -54,17 +64,38 @@ object main {
         val psn_offset = offset + 16
 
         for( i <- 0 to num_sectors - 1 ) {
-          val lpn = start_lba + i
-          val ppn = if( dir == 0 ) {
-            val ppn = ftl.read(lpn)
-            println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
-            ppn
+          val sector = start_lba + i
+
+          val lpn = sector / device.SectorsPerPage
+          val sector_offset = sector % device.SectorsPerPage
+
+          val ppn = if(lpn == last_lpn && dir == last_dir) {
+            last_ppn
           } else {
-            val ppn = ftl.write(lpn)
-            println(time.format(Calendar.getInstance().getTime()) + " W " + lpn + " " + ppn)
-            ppn
+              if( dir == 0 ) {
+              val ppn = ftl.read(lpn)
+              println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
+              ppn
+            } else {
+              val ppn = if ( sector_offset != 0 || num_sectors - i < device.SectorsPerPage ) {
+                //println("partial write lpn " + lpn + " sector " + sector + " offset " + sector_offset + " start_lba " + start_lba + " num_sectors " + num_sectors)
+                val old_ppn = ftl.read(lpn)
+                val new_ppn = ftl.write(lpn)
+                if( old_ppn < device.TotalPages ) device.move(old_ppn, new_ppn)
+                new_ppn
+              } else {
+                ftl.write(lpn)
+              }
+              println(time.format(Calendar.getInstance().getTime()) + " W " + lpn + " " + ppn)
+              ppn
+            }
           }
-          request_map.setLong(psn_offset + i * 8, ppn)
+
+          last_lpn = lpn
+          last_ppn = ppn
+          last_dir = dir
+
+          request_map.setLong(psn_offset + i * 8, ppn * device.SectorsPerPage + sector_offset)
         }
       }
 
