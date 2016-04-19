@@ -49,6 +49,8 @@ class DFTL(device:Device) extends FTL(device) {
       dftl_table(lpn).dirty = false
 
       dftl_cache = dftl_cache :+ dftl_table(lpn)
+    } else {
+      dftl_cache = dftl_cache.filter( _ != dftl_table(lpn) ) :+ dftl_table(lpn)
     }
 
     clean_cache
