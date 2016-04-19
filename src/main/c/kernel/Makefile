@@ -2,7 +2,7 @@
 obj-m		:= ssd_blkdev.o
 #KERN_SRC 	:=/home/cass/Downloads/linux-4.3.3/
 KERN_SRC	:= /lib/modules/$(shell uname -r)/build/
-USER_FTL_SRC:= ../USER_SRC/ftl
+USER_FTL_SRC:= ../ftl
 PWD			:= $(shell pwd)
 
 modules:

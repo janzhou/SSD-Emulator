@@ -7,7 +7,7 @@
 #include <signal.h>
 
 #include "ftl.h"
-#include "../../KERN_SRC/ssd_blkdev.h"
+#include "../kernel/ssd_blkdev.h"
 
 #define SSD_DEV_NODE	"/dev/ssd_ramdisk"
 

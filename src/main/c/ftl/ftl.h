@@ -2,7 +2,7 @@
 #define SSD_FTL
 
 #include <stdint.h>
-#include "../../KERN_SRC/ssd_blkdev.h"
+#include "../kernel/ssd_blkdev.h"
 
 enum {
 	READ,

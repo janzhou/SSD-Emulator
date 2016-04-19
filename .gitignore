@@ -1,3 +1,29 @@
+# scala
+*.class
+*.log
+
+# sbt specific
+.cache
+.history
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+.idea
+*.iml
+*.swp
+
+config.conf
+jvm-opts
+
+# kernel
 .*.mod
 .*.cmd
 .tmp_versions
@@ -8,5 +34,8 @@ Module.symvers
 modules.order
 *.swp
 
-USER_SRC/ftl/ftl_main
-USER_SRC/ftl/variables
+src/main/c/ftl/ftl_main
+src/main/c/ftl/variables
+.cproject
+.linKPlus
+.project
