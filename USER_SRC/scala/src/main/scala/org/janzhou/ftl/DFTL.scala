@@ -77,7 +77,14 @@ class DFTL(device:Device) extends FTL(device) {
     }
   }
 
-  def gc = {
+  def gc:Boolean = {
+    if ( free_block.length < device.ReserveBlocks / 2 ) {
+      force_gc
+      true
+    } else false
+  }
+
+  private def force_gc = {
     if ( gc_block.isEmpty ) {
       move
     }
@@ -117,7 +124,7 @@ class DFTL(device:Device) extends FTL(device) {
   }
 
   def write(lpn:Int):Int = {
-    if( free_block.length <= 2 ) gc
+    if( free_block.length <= 2 ) force_gc
     write_withoutGC(lpn)
   }
 

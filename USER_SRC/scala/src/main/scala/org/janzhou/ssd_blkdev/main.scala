@@ -7,6 +7,32 @@ import java.util.Calendar
 import java.text.SimpleDateFormat
 
 object main {
+  class GCThread(ftl:FTL) extends Thread {
+    var _heartbeat = 0
+
+    def heartbeat = {
+      this.synchronized {
+        _heartbeat = 0
+      }
+    }
+
+    override def run() {
+      while ( true ) {
+        this.synchronized {
+          _heartbeat += 1
+        }
+        if ( _heartbeat >= 1024 ) {
+          this.synchronized {
+            if( !ftl.gc ) {
+              _heartbeat = 0
+            }
+          }
+        } else {
+          Thread.sleep( 1000 )
+        }
+      }
+    }
+  }
 
   def main (args: Array[String]) {
     val fd = libc.run.open("/dev/ssd_ramdisk", libc.O_RDWR)
@@ -50,11 +76,16 @@ object main {
     var last_ppn = ftl.read(last_lpn)
     //println(time.format(Calendar.getInstance().getTime()) + " R " + last_lpn + " " + last_ppn)
 
+    val gc_thread = new GCThread(ftl)
+    gc_thread.start()
+
     while (true) {
       libc.run.ioctl(fd, 0x80087801, req_size) //SSD_BLKDEV_GET_REQ_SIZE
 
       val request_map = libc.run().calloc(req_size.getInt(0), 88) //sizeof(*request_map)
       libc.run.ioctl(fd, 0x80087802, request_map) //SSD_BLKDEV_GET_LBN
+
+      gc_thread.heartbeat
 
       for( i <- 0 to req_size.getInt(0) - 1 ) {
         val offset = i * 88
@@ -73,18 +104,22 @@ object main {
             last_ppn
           } else {
               if( dir == 0 ) {
-              val ppn = ftl.read(lpn)
+              val ppn = gc_thread.synchronized {
+                ftl.read(lpn)
+              }
               //println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
               ppn
             } else {
-              val ppn = if ( sector_offset != 0 || num_sectors - i < device.SectorsPerPage ) {
-                //println("partial write lpn " + lpn + " sector " + sector + " offset " + sector_offset + " start_lba " + start_lba + " num_sectors " + num_sectors)
-                val old_ppn = ftl.read(lpn)
-                val new_ppn = ftl.write(lpn)
-                if( old_ppn < device.TotalPages ) device.move(old_ppn, new_ppn)
-                new_ppn
-              } else {
-                ftl.write(lpn)
+              val ppn = gc_thread.synchronized {
+                if ( sector_offset != 0 || num_sectors - i < device.SectorsPerPage ) {
+                  //println("partial write lpn " + lpn + " sector " + sector + " offset " + sector_offset + " start_lba " + start_lba + " num_sectors " + num_sectors)
+                  val old_ppn = ftl.read(lpn)
+                  val new_ppn = ftl.write(lpn)
+                  if( old_ppn < device.TotalPages ) device.move(old_ppn, new_ppn)
+                  new_ppn
+                } else {
+                  ftl.write(lpn)
+                }
               }
               //println(time.format(Calendar.getInstance().getTime()) + " W " + lpn + " " + ppn)
               ppn
