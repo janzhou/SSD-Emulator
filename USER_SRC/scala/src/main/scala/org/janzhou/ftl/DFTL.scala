@@ -42,12 +42,20 @@ class DFTL(device:Device) extends FTL(device) {
     }
   }
 
-  def read(lpn:Int):Int = {
+  def cache(lpn:Int) = {
     if ( dftl_table(lpn).cached == false ) {
       dftl_table(lpn).cached = true
       dftl_table(lpn).dirty = false
 
       dftl_cache = dftl_cache :+ dftl_table(lpn)
+    }
+
+    clean_cache
+  }
+
+  def read(lpn:Int):Int = {
+    if ( dftl_table(lpn).cached == false ) {
+      cache(lpn)
 
       device.PageReadDelay
     }
