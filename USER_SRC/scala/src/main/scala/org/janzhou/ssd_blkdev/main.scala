@@ -16,8 +16,13 @@ object main {
       }
     }
 
+    var _stop = false
+    def stopGC = {
+      _stop = true
+    }
+
     override def run() {
-      while ( true ) {
+      while ( !_stop ) {
         this.synchronized {
           _heartbeat += 1
         }
@@ -47,10 +52,6 @@ object main {
 
     val req_size = libc.run().malloc(8)
 
-    sys.addShutdownHook({
-      libc.run().close(fd);
-    })
-
     val device = if ( args.length >= 2 ) {
       new Device(fd, args(1))
     } else {
@@ -78,6 +79,12 @@ object main {
 
     val gc_thread = new GCThread(ftl)
     gc_thread.start()
+
+    sys.addShutdownHook({
+      gc_thread.stopGC
+      gc_thread.join()
+      libc.run().close(fd);
+    })
 
     while (true) {
       libc.run.ioctl(fd, 0x80087801, req_size) //SSD_BLKDEV_GET_REQ_SIZE
