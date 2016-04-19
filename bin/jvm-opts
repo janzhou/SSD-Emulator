@@ -1,0 +1,1 @@
+-Xmx8G -Xms8G -XX:+UseG1GC -XX:ParallelGCThreads=8 -XX:ConcGCThreads=8

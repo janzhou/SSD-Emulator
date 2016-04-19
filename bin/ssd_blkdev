@@ -19,7 +19,7 @@ run(){
     scalaDir="target/scala-2.11"
     target=$(ls -t1 ${scalaDir}/ssd_blkdev-assembly-*.jar |  head -n 1)
     testClass="${scalaDir}/test-classes"
-    [ -f jvm-opts ] && cmd="sudo java $(cat jvm-opts) -cp ${target}:${testClass} $*" || cmd="sudo java $(cat bin/jvm-opts) -cp ${target}:${testClass} $*"
+    cmd="sudo java $(cat bin/jvm-opts) -cp ${target}:${testClass} $*"
     echo $cmd
     $cmd
 }
