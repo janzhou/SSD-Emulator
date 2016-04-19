@@ -10,11 +10,12 @@ class DFTL(device:Device) extends FTL(device) {
     var dirty:Int = 0
   }
 
-  val dftl_blocks = for( i <- 0 to device.NumberOfBlocks - 1 ) yield {
+  protected val dftl_blocks = for( i <- 0 to device.NumberOfBlocks - 1 ) yield {
     new dftl_block(i)
   }
-  var free_block = dftl_blocks.toList
-  var gc_block = List[dftl_block]()
+  protected var free_block = dftl_blocks.toList
+  protected var gc_block = List[dftl_block]()
+  protected var full_block = List[dftl_block]()
 
   class dftl_mapping_entry(val lpn:Int) {
     var block:dftl_block = null
@@ -23,13 +24,13 @@ class DFTL(device:Device) extends FTL(device) {
     var dirty:Boolean = false
   }
 
-  val dftl_table = for ( i <- 0 to ( device.TotalPages - ( device.TotalPages / 100 ) * device.ReserveSpace ) ) yield {
+  protected val dftl_table = for ( i <- 0 to device.TotalPages - 1 ) yield {
     val block_id = i / device.PagesPerBlock
     new dftl_mapping_entry(i)
   }
-  var dftl_cache = List[dftl_mapping_entry]()
+  protected var dftl_cache = List[dftl_mapping_entry]()
 
-  def clean_cache = {
+  protected def clean_cache = {
     while( dftl_cache.length > device.CacheSize ) {
       val cache = dftl_cache.head
 
@@ -56,15 +57,9 @@ class DFTL(device:Device) extends FTL(device) {
     dftl_table(lpn).ppn
   }
 
-  def move = {
+  protected def move = {
     val block = {
-      val candidate_blocks = {
-        var full_blocks = dftl_blocks.filter( _.clean == 0 )
-        if( full_blocks.isEmpty ) {
-          dftl_blocks
-        }
-        full_blocks
-      }
+      val candidate_blocks = full_block
 
       var gc = candidate_blocks.head
       for ( b <- candidate_blocks ) {
@@ -77,11 +72,9 @@ class DFTL(device:Device) extends FTL(device) {
 
     for ( lpn <- block.lpns ) {
       val from = read(lpn)
-      val to = write(lpn)
+      val to = write_withoutGC(lpn)
       device.move(from, to)
     }
-
-    gc_block = gc_block :+ block
   }
 
   def gc = {
@@ -111,6 +104,7 @@ class DFTL(device:Device) extends FTL(device) {
 
       if ( block.dirty >= device.PagesPerBlock ) {
         gc_block = gc_block :+ block
+        full_block = full_block.filter( _ != block )
       }
 
       dftl_table(lpn).block = null
@@ -123,7 +117,11 @@ class DFTL(device:Device) extends FTL(device) {
   }
 
   def write(lpn:Int):Int = {
-    if( free_block.isEmpty ) gc
+    if( free_block.length <= 2 ) gc
+    write_withoutGC(lpn)
+  }
+
+  private def write_withoutGC(lpn:Int):Int = {
     val block = free_block.head
 
     if ( dftl_table(lpn).block != null ) trim(lpn)
@@ -132,6 +130,7 @@ class DFTL(device:Device) extends FTL(device) {
     block.clean -= 1
     if( block.clean <= 0 ) {
       free_block = free_block.drop(1)
+      full_block = full_block :+ block
     }
     block.lpns = block.lpns :+ lpn
 

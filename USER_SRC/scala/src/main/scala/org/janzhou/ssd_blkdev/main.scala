@@ -48,7 +48,7 @@ object main {
     var last_dir = 0
     var last_lpn = 0
     var last_ppn = ftl.read(last_lpn)
-    println(time.format(Calendar.getInstance().getTime()) + " R " + last_lpn + " " + last_ppn)
+    //println(time.format(Calendar.getInstance().getTime()) + " R " + last_lpn + " " + last_ppn)
 
     while (true) {
       libc.run.ioctl(fd, 0x80087801, req_size) //SSD_BLKDEV_GET_REQ_SIZE
@@ -74,7 +74,7 @@ object main {
           } else {
               if( dir == 0 ) {
               val ppn = ftl.read(lpn)
-              println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
+              //println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
               ppn
             } else {
               val ppn = if ( sector_offset != 0 || num_sectors - i < device.SectorsPerPage ) {
@@ -86,7 +86,7 @@ object main {
               } else {
                 ftl.write(lpn)
               }
-              println(time.format(Calendar.getInstance().getTime()) + " W " + lpn + " " + ppn)
+              //println(time.format(Calendar.getInstance().getTime()) + " W " + lpn + " " + ppn)
               ppn
             }
           }

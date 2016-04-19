@@ -13,4 +13,5 @@ class DirectFTL(device:Device) extends FTL(device) {
   }
 
   def trim(lpn:Int):Unit = {}
+  def gc = {}
 }

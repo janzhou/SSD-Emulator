@@ -11,8 +11,8 @@ class Device(fd:Int = 0, config:String = "default") {
   val PagesPerBlock = _config.getInt("SSD.PagesPerBlock")
   val SectorsPerPage = _config.getInt("SSD.SectorsPerPage")
 
-  val TotalPages = NumberOfBlocks * PagesPerBlock
-  val ReserveSpace = _config.getInt("SSD.ReserveSpace")
+  val ReserveBlocks = _config.getInt("SSD.ReserveBlocks")
+  val TotalPages = ( NumberOfBlocks - ReserveBlocks ) * PagesPerBlock
 
   private def sleep(time:Int):Unit = {
     TimeUnit.MICROSECONDS.sleep(time)
@@ -24,10 +24,14 @@ class Device(fd:Int = 0, config:String = "default") {
 
   val CacheSize = _config.getInt("SSD.CacheSize")
 
-  val moveArgs = libc.run().malloc(16)
+  private val moveArgs = libc.run().malloc(16)
   def move(from:Int, to:Int):Unit = {
     moveArgs.setLong(0, from)
     moveArgs.setLong(8, to)
     libc.call.ioctl(fd, 0x40107804, moveArgs)
+  }
+
+  override def finalize = {
+    libc.call.free(moveArgs)
   }
 }
