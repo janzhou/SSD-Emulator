@@ -10,6 +10,14 @@ config(){
   [ -f 'bin/config' ] && . bin/config
 
   echo "
+  TOTAL_BLOCKS=$TOTAL_BLOCKS
+  RESERVE_BLOCKS=$RESERVE_BLOCKS
+  PAGES_PER_BLOCK=$PAGES_PER_BLOCK
+  PAGE_SIZE=$PAGE_SIZE
+  SECTOR_SIZE=$SECTOR_SIZE
+  "
+
+  echo "
 #ifndef SSD_CONFIG_H_
 #define SSD_CONFIG_H_
 

@@ -1,13 +1,17 @@
 # How to run
 
-1. Compile
+1. Config
+
+    ./bin/ssd_blkdev config
+
+2. Compile
 
     ./bin/ssd_blkdev build
 
-2. Insert kernel module
+3. Insert kernel module
 
     ./bin/ssd_blkdev insmod
 
-3. Run FTL
+4. Run FTL
 
     ./bin/ssd_blkdev ftl dftl
