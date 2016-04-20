@@ -30,6 +30,7 @@ Module.symvers
 *.ko
 modules.order
 *.swp
+Makefile.conf
 
 src/main/c/ftl/ftl_main
 src/main/c/ftl/variables

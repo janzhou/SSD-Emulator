@@ -1,9 +1,10 @@
 
 obj-m		:= ssd_blkdev.o
-#KERN_SRC 	:=/home/cass/Downloads/linux-4.3.3/
 KERN_SRC	:= /lib/modules/$(shell uname -r)/build/
 USER_FTL_SRC:= ../ftl
 PWD			:= $(shell pwd)
+
+-include Makefile.conf
 
 modules:
 	make -C $(KERN_SRC) M=$(PWD) modules
