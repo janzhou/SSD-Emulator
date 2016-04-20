@@ -31,13 +31,6 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 static struct sector_request_map *request_map;
 static unsigned int request_size;
 
-struct ssd_request_list {
-	struct request_queue *q;
-	struct list_head list;
-};
-
-static LIST_HEAD(ssd_request_list_head);
-
 static struct work_struct ssd_request_wrk;
 
 static struct gendisk *ssd_disk;
@@ -51,12 +44,6 @@ static wait_queue_head_t req_size_wq;
 static u8 lba_wait_flag, ppn_wait_flag, req_size_flag;
 
 static struct task_struct *user_app;
-
-struct ssd_page_buff {
-	u8 buff[SSD_PAGE_SIZE];
-};
-
-static struct ssd_page_buff ssd_page_buff;
 
 static void *ssd_dev_data;
 
@@ -112,39 +99,22 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 	return 0;
 }
 
-static void ssd_dev_read_page(unsigned long psn)
-{
-	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
-
-	if (ppn >= SSD_TOTAL_SIZE / SSD_PAGE_SIZE) {
-			PERR("Reached read capacity\n");
-			return;
-	}
-
-	memcpy(ssd_page_buff.buff, ssd_dev_data + ppn * SSD_PAGE_SIZE, SSD_PAGE_SIZE);
-}
-
 static void ssd_dev_read(unsigned long psn, u8 *buff)
 {
 	unsigned long sector_offset;
+	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
 
 	/* Read before a write request */
 	if (psn == SSD_MAP_TABLE_SIZE)
 		return;
 
-//	PINFO("Read: PSN: %lu\n", psn);
-
-	/* Read the page from the disk to the page buffer */
-	ssd_dev_read_page(psn);
-
-	/* Pick the requested sector and put the data into the buffer */
 	sector_offset = psn % SSD_NR_SECTORS_PER_PAGE;
-//	PINFO("Read: sector_offset: %lu\n", sector_offset);
-	memcpy(buff, ssd_page_buff.buff + sector_offset * SSD_SECTOR_SIZE, SSD_SECTOR_SIZE);
+	memcpy(buff, ssd_dev_data + ppn * SSD_PAGE_SIZE + sector_offset * SSD_SECTOR_SIZE, SSD_SECTOR_SIZE);
 }
 
-static void ssd_dev_write_page(unsigned long psn)
+static void ssd_dev_write(unsigned long psn, u8 *buff)
 {
+	unsigned long sector_offset;
 	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
 
 	if (ppn >= SSD_TOTAL_SIZE / SSD_PAGE_SIZE) {
@@ -152,21 +122,9 @@ static void ssd_dev_write_page(unsigned long psn)
 		return;
 	}
 
-	memcpy(ssd_dev_data + ppn * SSD_PAGE_SIZE, ssd_page_buff.buff, SSD_PAGE_SIZE);
-}
-
-static void ssd_dev_write(unsigned long psn, u8 *buff)
-{
-	unsigned long sector_offset;
-
-	/* Perform a Read-Modify-Update Operation */
-	ssd_dev_read_page(psn);
-
 	sector_offset = psn % SSD_NR_SECTORS_PER_PAGE;
-	memcpy(ssd_page_buff.buff + sector_offset * SSD_SECTOR_SIZE,
+	memcpy(ssd_dev_data + ppn * SSD_PAGE_SIZE + sector_offset * SSD_SECTOR_SIZE,
 			buff, SSD_SECTOR_SIZE);
-
-	ssd_dev_write_page(psn);
 }
 
 static int ssd_transfer(struct request *req)
@@ -263,44 +221,18 @@ static int ssd_transfer(struct request *req)
 static void ssd_request_func(struct work_struct *work)
 {
 	int ret = 0;
-	struct request_queue *q;
 	struct request *req;
-	struct ssd_request_list *ssd_req_node, *temp_req_node;
 
-//	rcu_read_lock();
+	while ((req = blk_fetch_request(ssd_queue)) != NULL) {
+		if (user_app)
+			ret = ssd_transfer(req);
 
-	list_for_each_entry_safe(ssd_req_node, temp_req_node, &ssd_request_list_head, list) {
-//		rcu_read_unlock();
-
-		q = ssd_req_node->q;
-
-		while ((req = blk_fetch_request(q)) != NULL) {
-			if (user_app)
-				ret = ssd_transfer(req);
-
-			__blk_end_request_all(req, ret);
-		}
-
-		list_del_rcu(&ssd_req_node->list);
-		kfree(ssd_req_node);
-
-//		rcu_read_lock();
+		__blk_end_request_all(req, ret);
 	}
-
-//	rcu_read_unlock();
 }
 
 static void ssd_make_request(struct request_queue *q)
 {
-	struct ssd_request_list *ssd_req_node;
-
-	ssd_req_node = kzalloc(sizeof(*ssd_req_node), GFP_KERNEL);
-	if (!ssd_req_node)
-		return;
-
-	ssd_req_node->q = q;
-	list_add_tail_rcu(&ssd_req_node->list, &ssd_request_list_head);
-
 	/* Start the I/O request processing in the process context */
 	schedule_work(&ssd_request_wrk);
 }
