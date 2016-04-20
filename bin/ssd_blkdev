@@ -30,7 +30,7 @@ config(){
 #define SSD_SECTOR_SIZE	 (unsigned long) $SECTOR_SIZE
 #define SSD_NR_SECTORS_PER_PAGE		(SSD_PAGE_SIZE / SSD_SECTOR_SIZE)
 
-#define SSD_TOTAL_SIZE	(SSD_NR_BLOCKS * SSD_NR_PAGES_PER_BLOCK * SSD_NR_SECTORS_PER_PAGE * SSD_SECTOR_SIZE)
+#define SSD_TOTAL_SIZE	(SSD_NR_PAGES * SSD_NR_SECTORS_PER_PAGE * SSD_SECTOR_SIZE)
 
 #define SSD_MAP_TABLE_SIZE (SSD_NR_PAGES * SSD_NR_SECTORS_PER_PAGE)
 #endif /* SSD_CONFIG_H_ */
@@ -108,16 +108,25 @@ clean(){
 }
 
 kernel(){
+  [ ! -f 'src/main/c/kernel/config.h' ] && config
   make -C src/main/c/kernel
 }
 
 build(){
   kernel
+  [ ! -f 'src/main/resources/default.conf' ] && config
   sbt assembly
 }
 
 build.sbt(){
   build
+}
+
+upload(){
+  scp src/main/c/kernel/ssd_blkdev.ko $1/ssd_blkdev.ko
+  scalaDir="target/scala-2.11"
+  target=$(ls -t1 ${scalaDir}/ssd_blkdev-assembly-*.jar |  head -n 1)
+  scp $target $1/ssd_blkdev.jar
 }
 
 $*

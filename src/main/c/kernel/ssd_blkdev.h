@@ -1,8 +1,6 @@
 #ifndef SSD_BLKDEV_IOCTL_H_
 #define SSD_BLKDEV_IOCTL_H_
 
-#include "config.h"
-
 struct ssd_move_page {
 	unsigned long old_ppn;
 	unsigned long new_ppn;
