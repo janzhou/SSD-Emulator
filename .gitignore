@@ -40,3 +40,4 @@ src/main/c/ftl/variables
 
 src/main/c/kernel/config.h
 src/main/resources/default.conf
+bin/config
