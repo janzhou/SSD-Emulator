@@ -37,3 +37,6 @@ src/main/c/ftl/variables
 .cproject
 .linKPlus
 .project
+
+src/main/c/kernel/config.h
+src/main/resources/default.conf

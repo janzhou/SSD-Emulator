@@ -1,6 +1,8 @@
 #ifndef SSD_BLKDEV_IOCTL_H_
 #define SSD_BLKDEV_IOCTL_H_
 
+#include "config.h"
+
 struct ssd_move_page {
 	unsigned long old_ppn;
 	unsigned long new_ppn;
@@ -31,19 +33,5 @@ struct sector_request_map {
 	unsigned long psn[SSD_REQUEST_SIZE];
 	void *request_buff;
 };
-
-
-#define SSD_NR_BLOCKS (unsigned long) 512
-#define SSD_NR_RESERVE (unsigned long) 128
-#define SSD_NR_PAGES_PER_BLOCK (unsigned long) 1024
-#define SSD_NR_PAGES ((SSD_NR_BLOCKS - SSD_NR_RESERVE) * SSD_NR_PAGES_PER_BLOCK)
-
-#define SSD_PAGE_SIZE	(unsigned long) 4096
-#define SSD_SECTOR_SIZE	 (unsigned long) 512
-#define SSD_NR_SECTORS_PER_PAGE		(SSD_PAGE_SIZE / SSD_SECTOR_SIZE)
-
-#define SSD_TOTAL_SIZE	(SSD_NR_BLOCKS * SSD_NR_PAGES_PER_BLOCK * SSD_NR_SECTORS_PER_PAGE * SSD_SECTOR_SIZE)
-
-#define SSD_MAP_TABLE_SIZE (SSD_NR_PAGES * SSD_NR_SECTORS_PER_PAGE)
 
 #endif /* SSD_BLKDEV_IOCTL_H_ */

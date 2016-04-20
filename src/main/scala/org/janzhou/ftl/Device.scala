@@ -5,11 +5,17 @@ import java.util.concurrent.TimeUnit
 import org.janzhou.native._
 
 class Device(fd:Int = 0, config:String = "default") {
-  private val _config = ConfigFactory.load(config)
+  private val _config = if ( config == "default" ) {
+     ConfigFactory.load(config)
+  } else {
+     ConfigFactory.load(config).withFallback(
+       ConfigFactory.load("default")
+     )
+  }
 
   val NumberOfBlocks = _config.getInt("SSD.NumberOfBlocks")
   val PagesPerBlock = _config.getInt("SSD.PagesPerBlock")
-  val SectorsPerPage = _config.getInt("SSD.SectorsPerPage")
+  val SectorsPerPage = _config.getInt("SSD.PageSize") / _config.getInt("SSD.SectorSize")
 
   val ReserveBlocks = _config.getInt("SSD.ReserveBlocks")
   val TotalPages = ( NumberOfBlocks - ReserveBlocks ) * PagesPerBlock

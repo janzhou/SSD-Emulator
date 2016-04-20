@@ -13,6 +13,7 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #include <linux/vmalloc.h>
 
 #include "ssd_blkdev.h"
+#include "config.h"
 
 #define DRIVER_NAME "ssd_blkdev"
 #define PDEBUG(fmt,args...) pr_debug("%s: "fmt,DRIVER_NAME, ##args)
