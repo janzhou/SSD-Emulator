@@ -30,13 +30,6 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 static struct sector_request_map *request_map;
 static unsigned int request_size;
 
-struct ssd_request_list {
-	struct request_queue *q;
-	struct list_head list;
-};
-
-static LIST_HEAD(ssd_request_list_head);
-
 static struct work_struct ssd_request_wrk;
 
 static struct gendisk *ssd_disk;
@@ -227,44 +220,18 @@ static int ssd_transfer(struct request *req)
 static void ssd_request_func(struct work_struct *work)
 {
 	int ret = 0;
-	struct request_queue *q;
 	struct request *req;
-	struct ssd_request_list *ssd_req_node, *temp_req_node;
 
-//	rcu_read_lock();
+	while ((req = blk_fetch_request(ssd_queue)) != NULL) {
+		if (user_app)
+			ret = ssd_transfer(req);
 
-	list_for_each_entry_safe(ssd_req_node, temp_req_node, &ssd_request_list_head, list) {
-//		rcu_read_unlock();
-
-		q = ssd_req_node->q;
-
-		while ((req = blk_fetch_request(q)) != NULL) {
-			if (user_app)
-				ret = ssd_transfer(req);
-
-			__blk_end_request_all(req, ret);
-		}
-
-		list_del_rcu(&ssd_req_node->list);
-		kfree(ssd_req_node);
-
-//		rcu_read_lock();
+		__blk_end_request_all(req, ret);
 	}
-
-//	rcu_read_unlock();
 }
 
 static void ssd_make_request(struct request_queue *q)
 {
-	struct ssd_request_list *ssd_req_node;
-
-	ssd_req_node = kzalloc(sizeof(*ssd_req_node), GFP_KERNEL);
-	if (!ssd_req_node)
-		return;
-
-	ssd_req_node->q = q;
-	list_add_tail_rcu(&ssd_req_node->list, &ssd_request_list_head);
-
 	/* Start the I/O request processing in the process context */
 	schedule_work(&ssd_request_wrk);
 }
