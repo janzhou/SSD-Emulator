@@ -117,7 +117,7 @@ object main {
               val ppn = gc_thread.synchronized {
                 ftl.read(lpn)
               }
-              println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
+              //println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
               ppn
             } else {
               val ppn = gc_thread.synchronized {
