@@ -28,7 +28,8 @@ object main {
         }
         if ( _heartbeat >= 1024 ) {
           this.synchronized {
-            if( !ftl.gc ) {
+            println("background gc")
+            if (!ftl.gc) {
               _heartbeat = 0
             }
           }
@@ -107,6 +108,8 @@ object main {
           val lpn = sector / device.SectorsPerPage
           val sector_offset = sector % device.SectorsPerPage
 
+          //println("dir " + dir + " sector " + sector + " lpn " + lpn + " offset " + sector_offset)
+
           val ppn = if(lpn == last_lpn && dir == last_dir) {
             last_ppn
           } else {
@@ -114,7 +117,7 @@ object main {
               val ppn = gc_thread.synchronized {
                 ftl.read(lpn)
               }
-              //println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
+              println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
               ppn
             } else {
               val ppn = gc_thread.synchronized {

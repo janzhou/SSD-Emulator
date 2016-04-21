@@ -100,32 +100,24 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 	return 0;
 }
 
-static void ssd_dev_read(unsigned long psn, u8 *buff)
+static void ssd_dev_read_sector(unsigned long psn, u8 *buff)
 {
-	unsigned long sector_offset;
-	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
-
-	/* Read before a write request */
-	if (psn == SSD_MAP_TABLE_SIZE)
+	if (psn >= SSD_TOTAL_SECTORS){
+		PERR("Reached read capacity\n");
 		return;
+	}
 
-	sector_offset = psn % SSD_NR_SECTORS_PER_PAGE;
-	memcpy(buff, ssd_dev_data + ppn * SSD_PAGE_SIZE + sector_offset * SSD_SECTOR_SIZE, SSD_SECTOR_SIZE);
+	memcpy(buff, ssd_dev_data + psn * SSD_SECTOR_SIZE, SSD_SECTOR_SIZE);
 }
 
-static void ssd_dev_write(unsigned long psn, u8 *buff)
+static void ssd_dev_write_sector(unsigned long psn, u8 *buff)
 {
-	unsigned long sector_offset;
-	unsigned long ppn = psn / SSD_NR_SECTORS_PER_PAGE;
-
-	if (ppn >= SSD_TOTAL_SIZE / SSD_PAGE_SIZE) {
+	if (psn >= SSD_TOTAL_SECTORS) {
 		PERR("Reached write capacity\n");
 		return;
 	}
 
-	sector_offset = psn % SSD_NR_SECTORS_PER_PAGE;
-	memcpy(ssd_dev_data + ppn * SSD_PAGE_SIZE + sector_offset * SSD_SECTOR_SIZE,
-			buff, SSD_SECTOR_SIZE);
+	memcpy(ssd_dev_data + psn * SSD_SECTOR_SIZE, buff, SSD_SECTOR_SIZE);
 }
 
 static int ssd_transfer(struct request *req)
@@ -204,9 +196,9 @@ static int ssd_transfer(struct request *req)
 #endif
 
 			if (req_map->dir == WRITE)
-				ssd_dev_write(req_map->psn[j], temp_buff);
+				ssd_dev_write_sector(req_map->psn[j], temp_buff);
 			else
-				ssd_dev_read(req_map->psn[j], temp_buff);
+				ssd_dev_read_sector(req_map->psn[j], temp_buff);
 		}
 	}
 
