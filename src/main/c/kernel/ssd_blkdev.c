@@ -28,7 +28,8 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #define SSD_INVOLVE_USER
 
-static struct sector_request_map *request_map;
+//static struct sector_request_map *request_map;
+static struct sector_request_map request_map[128];
 static unsigned int request_size;
 
 static struct work_struct ssd_request_wrk;
@@ -45,8 +46,8 @@ static u8 lba_wait_flag, ppn_wait_flag, req_size_flag;
 
 static struct task_struct *user_app;
 
-static void *ssd_dev_data;
-//static u8 ssd_dev_data[SSD_TOTAL_SIZE];
+//static void *ssd_dev_data;
+static u8 ssd_dev_data[SSD_TOTAL_SIZE];
 
 int major;
 
@@ -143,9 +144,9 @@ static int ssd_transfer(struct request *req)
 	wake_up_interruptible(&req_size_wq);
 #endif
 
-	request_map = kzalloc(request_size * sizeof(struct sector_request_map), GFP_KERNEL);
-	if (!request_map)
-		return -ENOMEM;
+//	request_map = kzalloc(request_size * sizeof(struct sector_request_map), GFP_KERNEL);
+//	if (!request_map)
+//		return -ENOMEM;
 
 //	PINFO("Request: Dir: %d; Sector: %lu; Cnt: %d; Request_size: %u\n",
 //			dir, start_sector, nr_sectors, request_size);
@@ -202,7 +203,7 @@ static int ssd_transfer(struct request *req)
 		}
 	}
 
-	kfree(request_map);
+//	kfree(request_map);
 
 	if (sector_offset != nr_sectors) {
 		PERR("Bio info doesn't match with req info\n");
@@ -273,17 +274,17 @@ static int ssd_dev_create(void)
 	set_capacity(ssd_disk, SSD_TOTAL_EXPOSED_SIZE / SSD_SECTOR_SIZE);
 
 	/* Allocate SSD flash memory and page buffer */
-	ssd_dev_data = vzalloc(SSD_TOTAL_SIZE);
-	if (!ssd_dev_data) {
-		PERR("Failed to allocate memory for the disk space\n");
-		ret = -ENOMEM;
-		goto vzalloc_fail;
-	}
+//	ssd_dev_data = vzalloc(SSD_TOTAL_SIZE);
+//	if (!ssd_dev_data) {
+//		PERR("Failed to allocate memory for the disk space\n");
+//		ret = -ENOMEM;
+//		goto vzalloc_fail;
+//	}
 
 	return 0;
 
-vzalloc_fail:
-	put_disk(ssd_disk);
+//vzalloc_fail:
+//	put_disk(ssd_disk);
 disk_fail:
 	blk_cleanup_queue(ssd_queue);
 	return ret;
@@ -291,7 +292,7 @@ disk_fail:
 
 static void ssd_dev_destroy(void)
 {
-	vfree(ssd_dev_data);
+//	vfree(ssd_dev_data);
 	put_disk(ssd_disk);
 	blk_cleanup_queue(ssd_queue);
 }
