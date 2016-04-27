@@ -30,7 +30,7 @@ class Device(fd:Int = 0, config:String = "default") {
   def move(from:Int, to:Int):Unit = {
     moveArgs.setLong(0, from)
     moveArgs.setLong(8, to)
-    libc.call.ioctl(fd, 0x40107804, moveArgs)
+    if( from != to ) libc.call.ioctl(fd, 0x40107804, moveArgs)
   }
 
   override def finalize = {
