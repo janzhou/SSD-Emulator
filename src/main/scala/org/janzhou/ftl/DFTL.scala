@@ -37,20 +37,20 @@ class DFTL(device:Device) extends FTL(device) {
       if ( cache.dirty ) {
         device.PageReadDelay
         device.PageWriteDelay
+
+        val MappingPerPage = 512
+        val start_lpn = cache.lpn / MappingPerPage * MappingPerPage
+        val stop_lpn = start_lpn + MappingPerPage - 1
+        for ( i <- start_lpn to stop_lpn ) {
+          val cache = dftl_table(i)
+          if ( cache.dirty ) {
+            cache.dirty = false
+          }
+        }
       }
 
       cache.dirty = false
       cache.cached = false
-
-      val MappingPerPage = 512
-      val start_lpn = cache.lpn / MappingPerPage * MappingPerPage
-      val stop_lpn = start_lpn + MappingPerPage - 1
-      for ( i <- start_lpn to stop_lpn ) {
-        val cache = dftl_table(i)
-        if ( cache.dirty ) {
-          cache.dirty = false
-        }
-      }
 
       dftl_cache = dftl_cache.drop(1)
     }
@@ -124,9 +124,9 @@ class DFTL(device:Device) extends FTL(device) {
 
   def trim(lpn:Int):Unit = {
     if ( dftl_table(lpn).block != null ) {
-      if ( dftl_table(lpn).cached == false ) {
-        device.PageReadDelay
-      }
+      //if ( dftl_table(lpn).cached == false ) {
+      //  device.PageReadDelay
+      //}
 
       val block = dftl_table(lpn).block
       block.lpns = block.lpns.filter(_ != lpn)
@@ -142,7 +142,9 @@ class DFTL(device:Device) extends FTL(device) {
       dftl_table(lpn).cached = true
       dftl_table(lpn).dirty = true
 
-      dftl_cache = dftl_cache :+ dftl_table(lpn)
+      if( !dftl_table(lpn).cached ) {
+        dftl_cache = dftl_cache :+ dftl_table(lpn)
+      }
     }
   }
 
