@@ -12,30 +12,28 @@ class CPFTL(device:Device) extends DFTL(device) with Runnable {
   private val false_positive_rate = 0.001
 
   private var accessSequence = List[Int]()
-  private var correlations = List[List[Int]]()
-  private var bfs = List[BloomFilter[Int]]()
+  private var correlations = List[(BloomFilter[Int], List[Int])]()
   private var bf:BloomFilter[Int] = new FilterBuilder(0, false_positive_rate).buildBloomFilter()
 
   private val do_mining = new Semaphore(0);
 
   def prefetch(lpn:Int) = {
     val tmp = this.synchronized{
-      (correlations, bfs, bf)
+      (correlations, bf)
     }
 
     val tmp_correlations = tmp._1
-    val tmp_bfs = tmp._2
-    val tmp_bf = tmp._3
+    val tmp_bf = tmp._2
 
     if ( !dftl_table(lpn).cached ) {
       if ( tmp_bf.contains(lpn) ) {
-        for ( i <- 0 to tmp_bfs.length - 1 ) {
-          val bf = tmp_bfs(i)
+        for( correlation <- correlations ) {
+          val bf = correlation._1
+          val seq = correlation._2
           if ( bf.contains(lpn) ) {
-            correlations(i).foreach( lpn => cache(lpn) )
+            seq.foreach( lpn => cache(lpn) )
           }
         }
-        cache(lpn)
       }
     }
   }
@@ -69,21 +67,18 @@ class CPFTL(device:Device) extends DFTL(device) with Runnable {
     }
 
     val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
-
-    val tmp_bfs = tmp_correlations.map(seq => {
+    .map(seq => {
       val bf:BloomFilter[Int] = new FilterBuilder(seq.length, false_positive_rate).buildBloomFilter()
       bf.addAll(seq.asJava)
-      bf
-
+      (bf, seq)
     })
 
-    val full = tmp_correlations.reduce( _ ::: _ )
+    val full = tmp_correlations.map(_._2).reduce( _ ::: _ )
     val tmp_bf:BloomFilter[Int] = new FilterBuilder(full.length, false_positive_rate).buildBloomFilter()
     tmp_bf.addAll(full.asJava)
 
-    this.synchronized{
+    this.synchronized {
       correlations = tmp_correlations
-      bfs = tmp_bfs
       bf = tmp_bf
     }
 
