@@ -4,10 +4,16 @@ import java.util.concurrent.TimeUnit
 import orestes.bloomfilter._
 import scala.collection.JavaConverters._
 import java.util.concurrent.Semaphore
+import info.debatty.java.lsh.LSHSuperBit
 
 class CPFTL(device:Device) extends DFTL(device) with Runnable {
 
   println("CPFTL")
+
+  private val n = 100 // Size of vectors
+  private val stages = 2 // the number of stages is also sometimes called thge number of bands
+  private val buckets = 10;
+  private val lsh = new LSHSuperBit(stages, buckets, n)
 
   private val false_positive_rate = 0.001
 
@@ -71,6 +77,11 @@ class CPFTL(device:Device) extends DFTL(device) with Runnable {
       val bf:BloomFilter[Int] = new FilterBuilder(seq.length, false_positive_rate).buildBloomFilter()
       bf.addAll(seq.asJava)
       (bf, seq)
+    })
+
+    tmp_correlations.foreach( seq => {
+      print(lsh.hash(seq._2.toArray))
+      println(seq._2)
     })
 
     val full = tmp_correlations.map(_._2).reduce( _ ::: _ )
