@@ -6,6 +6,8 @@ import scala.collection.JavaConverters._
 import java.util.concurrent.Semaphore
 import info.debatty.java.lsh.LSHSuperBit
 
+import org.janzhou.cminer._
+
 class CPFTL(device:Device) extends DFTL(device) with Runnable {
 
   println("CPFTL")
@@ -17,6 +19,8 @@ class CPFTL(device:Device) extends DFTL(device) with Runnable {
 
   private val false_positive_rate = 0.001
 
+  private val miner = new Cminer(0.1, 512, 64) // support, splitSize, depth
+  private val accessSequenceLength = 10240
   private var accessSequence = List[Int]()
   private var correlations = List[(BloomFilter[Int], List[Int])]()
   private var bf:BloomFilter[Int] = new FilterBuilder(0, false_positive_rate).buildBloomFilter()
@@ -50,7 +54,7 @@ class CPFTL(device:Device) extends DFTL(device) with Runnable {
       accessSequence.length
     }
 
-    if ( sequence_length >= 512 ) {
+    if ( sequence_length >= accessSequenceLength ) {
       if ( do_mining.availablePermits == 0 ) do_mining.release
     }
 
@@ -59,7 +63,7 @@ class CPFTL(device:Device) extends DFTL(device) with Runnable {
   }
 
   private def miningFrequentSubSequence (accessSequence:List[Int]):List[List[Int]] = {
-    accessSequence.grouped(64).toList
+    miner.mine(accessSequence)
   }
 
   override def run = {
