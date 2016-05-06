@@ -26,12 +26,13 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #define SSD_DEV_MAX_MINORS 4
 
-#define SSD_INVOLVE_USER
+//#define SSD_INVOLVE_USER
 
 //static struct sector_request_map *request_map;
 static struct sector_request_map request_map[128];
 static unsigned int request_size;
 
+static struct bio_list ssd_bio_queue;
 static struct work_struct ssd_request_wrk;
 
 static struct gendisk *ssd_disk;
@@ -121,50 +122,42 @@ static void ssd_dev_write_sector(unsigned long psn, u8 *buff)
 	memcpy(ssd_dev_data + psn * SSD_SECTOR_SIZE, buff, SSD_SECTOR_SIZE);
 }
 
-static int ssd_transfer(struct request *req)
+static void ssd_transfer(struct bio *bio)
 {
-	int dir = rq_data_dir(req);
-	sector_t start_sector = blk_rq_pos(req);
-	unsigned int nr_sectors = blk_rq_sectors(req);
-
+	int rw, i = 0;
 	struct bio_vec bv;
-	struct req_iterator iter;
+	sector_t start_sector = bio->bi_iter.bi_sector;
 	sector_t sector_offset = 0;
-
+	struct bvec_iter iter;
 	void *temp_buff;
 
-	int ret = 0;
-	int i, j;
+	rw = bio_rw(bio);
+	if (rw == READA)
+		rw = READ;
 
-	request_size = nr_sectors / SSD_REQUEST_SIZE;
+	request_size = bio->bi_vcnt / SSD_REQUEST_SIZE;
 	if (request_size == 0)
 		request_size = 1;
+
 #ifdef SSD_INVOLVE_USER
-	req_size_flag = 1;
-	wake_up_interruptible(&req_size_wq);
+	   req_size_flag = 1;
+	   wake_up_interruptible(&req_size_wq);
 #endif
 
-//	request_map = kzalloc(request_size * sizeof(struct sector_request_map), GFP_KERNEL);
-//	if (!request_map)
-//		return -ENOMEM;
+//	PINFO("Base sector: %lu; vec_cnt: %d; request size: %u\n", start_sector, bio->bi_vcnt, request_size);
 
-//	PINFO("Request: Dir: %d; Sector: %lu; Cnt: %d; Request_size: %u\n",
-//			dir, start_sector, nr_sectors, request_size);
-
-	/* Buffer requests */
-	i = 0;
-	rq_for_each_segment(bv, req, iter) {
+	bio_for_each_segment(bv, bio, iter) {
 		struct sector_request_map *req_map = &request_map[i];
 
 		req_map->request_buff = page_address(bv.bv_page) + bv.bv_offset;
 		req_map->num_sectors = bv.bv_len / SSD_SECTOR_SIZE;
 		if (req_map->num_sectors > SSD_REQUEST_SIZE)
-			return -EIO;
+			goto err;
 
 //		PINFO("Bio1: Sector offset: %lu; buff: %p; Length: %u (%d sectors)\n",
 //				sector_offset, req_map->request_buff, bv.bv_len, req_map->num_sectors);
 
-		req_map->dir = dir;
+		req_map->dir = rw;
 		req_map->start_lba = start_sector + sector_offset;
 
 		sector_offset += req_map->num_sectors;
@@ -182,6 +175,7 @@ static int ssd_transfer(struct request *req)
 
 	/* Perform I/O */
 	for (i = 0; i < request_size; i++) {
+		int j;
 		struct sector_request_map *req_map = &request_map[i];
 #ifndef SSD_INVOLVE_USER
 		unsigned int lba = req_map->start_lba;
@@ -203,32 +197,53 @@ static int ssd_transfer(struct request *req)
 		}
 	}
 
-//	kfree(request_map);
+	bio_endio(bio);
+	return;
 
-	if (sector_offset != nr_sectors) {
-		PERR("Bio info doesn't match with req info\n");
-	}
-
-	return ret;
+err:
+	bio_io_error(bio);
 }
 
 static void ssd_request_func(struct work_struct *work)
 {
-	int ret = 0;
-	struct request *req;
+	struct bio *bio;
+	unsigned long flags;
 
-	while ((req = blk_fetch_request(ssd_queue)) != NULL) {
-		if (user_app)
-			ret = ssd_transfer(req);
-
-		__blk_end_request_all(req, ret);
+	spin_lock_irqsave(&ssd_lck, flags);
+	for (bio = bio_list_pop(&ssd_bio_queue); bio; bio = bio_list_pop(&ssd_bio_queue)) {
+		spin_unlock_irqrestore(&ssd_lck, flags);
+//		PINFO("%s: BIO: %p\n", __func__, bio);
+		ssd_transfer(bio);
+		spin_lock_irqsave(&ssd_lck, flags);
 	}
+
+	spin_unlock_irqrestore(&ssd_lck, flags);
 }
 
-static void ssd_make_request(struct request_queue *q)
+static void ssd_make_request(struct request_queue *q, struct bio *bio)
 {
-	/* Start the I/O request processing in the process context */
+	unsigned long flags;
+
+	if (!user_app)
+		goto exit;
+
+	if (bio_end_sector(bio) > get_capacity(ssd_disk))
+		goto err;
+
+	spin_lock_irqsave(&ssd_lck, flags);
+//	PINFO("%s: BIO: %p\n", __func__, bio);
+	bio_list_add_head(&ssd_bio_queue, bio);
+	spin_unlock_irqrestore(&ssd_lck, flags);
+
 	schedule_work(&ssd_request_wrk);
+	return;
+
+exit:
+	bio_endio(bio);
+	return;
+
+err:
+	bio_io_error(bio);
 }
 
 void ssd_dev_release(struct gendisk *gendisk, fmode_t mode)
@@ -250,12 +265,15 @@ static int ssd_dev_create(void)
 	int ret = 0;
 
 	spin_lock_init(&ssd_lck);
-	ssd_queue = blk_init_queue(ssd_make_request, &ssd_lck);
+	bio_list_init(&ssd_bio_queue);
+
+	ssd_queue = blk_alloc_queue(GFP_KERNEL);
 	if (!ssd_queue) {
 		PERR("Failed to allocate the request queue\n");
 		return PTR_ERR(ssd_queue);
 	}
 
+	blk_queue_make_request(ssd_queue, ssd_make_request);
 	blk_queue_max_hw_sectors(ssd_queue, SSD_DEV_REQUEST_QUEUE);
 
 	ssd_disk = alloc_disk(SSD_DEV_MAX_PARTITION);
@@ -313,11 +331,11 @@ static int __init ssd_blkdev_init(void)
 		goto create_fail;
 	}
 
+	INIT_WORK(&ssd_request_wrk, ssd_request_func);
+
 	init_waitqueue_head(&sector_lba_wq);
 	init_waitqueue_head(&sector_ppn_wq);
 	init_waitqueue_head(&req_size_wq);
-
-	INIT_WORK(&ssd_request_wrk, ssd_request_func);
 
 	add_disk(ssd_disk);
 
