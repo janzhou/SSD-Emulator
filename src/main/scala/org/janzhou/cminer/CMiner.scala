@@ -65,7 +65,7 @@ class CMiner(
   private def nextLevelSubSequence(list:List[CMinerSubsequence])
   :List[CMinerSubsequence] = {
     list.flatMap( father => {
-      for ( pos <- father.pos + 1 to father.split.length ) yield {
+      for ( pos <- father.pos + 1 to father.split.length - 1 ) yield {
         val seq = father.seq :+ father.split(pos)
         new CMinerSubsequence(seq, father.split, pos, father)
       }
