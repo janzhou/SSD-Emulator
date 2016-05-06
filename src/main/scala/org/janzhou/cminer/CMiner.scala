@@ -75,7 +75,7 @@ class CMiner(
   def mine(seq:List[Int]):List[List[Int]] = {
     var subSequence = frequentSubsequence(firstLevelSubSequences(seq))
 
-    for ( i <- 1 to depth ) {
+    for ( i <- 1 to depth - 1 ) {
       subSequence = frequentSubsequence(nextLevelSubSequence(subSequence))
     }
 
