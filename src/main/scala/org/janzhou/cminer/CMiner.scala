@@ -3,21 +3,21 @@ package org.janzhou.cminer
 import collection.mutable.HashMap
 import scala.util.control.Breaks
 
-class Cminer(
+class CMiner(
   val minSupport:Double = 0.1,
   val splitSize:Int = 512,
   val depth:Int = 64
 ) {
-  class CminerSubsequence(
+  class CMinerSubsequence(
     val seq:List[Int],
     val split:Array[Int],
     val pos:Int,
-    val father:CminerSubsequence
+    val father:CMinerSubsequence
   ) {
     var support = 0
 
     override def equals(o: Any) = o match {
-      case that:CminerSubsequence => this.seq.equals(that.seq)
+      case that:CMinerSubsequence => this.seq.equals(that.seq)
       case _ => false
     }
 
@@ -26,8 +26,9 @@ class Cminer(
     }
   }
 
-  def frequentSubsequence(list:List[CminerSubsequence]):List[CminerSubsequence] = {
-    var support = new HashMap[CminerSubsequence, Int]()
+  private def frequentSubsequence(list:List[CMinerSubsequence])
+  :List[CMinerSubsequence] = {
+    var support = new HashMap[CMinerSubsequence, Int]()
     for ( element <- list ) {
       val count = {
         if ( support.contains(element) ) {
@@ -49,24 +50,25 @@ class Cminer(
     list.filter( _.support >= min )
   }
 
-  def firstLevelSubSequences(seq:List[Int]):List[CminerSubsequence] = {
+  private def firstLevelSubSequences(seq:List[Int])
+  :List[CMinerSubsequence] = {
     val splits = seq.grouped(splitSize).toList
 
     splits.flatMap( split => {
       var pos = -1
       split.map( access => {
         pos += 1
-        new CminerSubsequence(List(access), split.toArray, pos, null)
+        new CMinerSubsequence(List(access), split.toArray, pos, null)
       })
     })
   }
 
-  def nextLevelSubSequence(list:List[CminerSubsequence])
-  :List[CminerSubsequence] = {
+  private def nextLevelSubSequence(list:List[CMinerSubsequence])
+  :List[CMinerSubsequence] = {
     list.flatMap( father => {
       for ( pos <- father.pos + 1 to father.split.length ) yield {
         val seq = father.seq :+ father.split(pos)
-        new CminerSubsequence(seq, father.split, pos, father)
+        new CMinerSubsequence(seq, father.split, pos, father)
       }
     })
   }
