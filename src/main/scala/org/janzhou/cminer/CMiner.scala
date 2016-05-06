@@ -42,11 +42,10 @@ class CMiner(
       support += ( element -> count )
     }
 
+    val min = list.length * minSupport
     list.foreach { element =>
       element.support = support(element)
     }
-
-    val min = list.length * minSupport
     list.filter( _.support >= min )
   }
 
@@ -80,7 +79,7 @@ class CMiner(
       subSequence = frequentSubsequence(nextLevelSubSequence(subSequence))
     }
 
-    subSequence.map( _.seq )
+    subSequence.map( _.seq ).distinct
   }
 
   assert(splitSize >= depth)
