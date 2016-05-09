@@ -3,6 +3,7 @@ package org.janzhou.ssd_blkdev
 import com.sun.jna._
 import org.janzhou.ftl._
 import org.janzhou.native._
+import org.janzhou.cminer._
 import java.util.Calendar
 import java.text.SimpleDateFormat
 
@@ -65,6 +66,8 @@ object main {
         case "dftl" => new DFTL(device)
         case "CPFTL" => new CPFTL(device)
         case "cpftl" => new CPFTL(device)
+        case "LSHFTL" => new CPFTL(device, new LSHMiner())
+        case "lshftl" => new CPFTL(device, new LSHMiner())
         case _ => new DirectFTL(device)
       }
     }

@@ -7,11 +7,13 @@ import java.util.concurrent.Semaphore
 
 import org.janzhou.cminer._
 
-class CPFTL(device:Device) extends DFTL(device) with Runnable {
+class CPFTL(
+  val device:Device,
+  val miner:Miner = new CMiner()
+) extends DFTL(device) with Runnable {
 
   println("CPFTL")
 
-  private val miner = new CMiner(0.1, 512, 64) // support, splitSize, depth
   private val accessSequenceLength = 10240
   private val false_positive_rate = 0.001
 

@@ -3,11 +3,15 @@ package org.janzhou.cminer
 import collection.mutable.HashMap
 import scala.util.control.Breaks
 
-class CMiner(
+trait Miner {
+  def mine(seq:List[Int]):List[List[Int]]
+}
+
+class CMiner (
   val minSupport:Double = 0.1,
   val splitSize:Int = 512,
   val depth:Int = 64
-) {
+) extends Miner {
   class CMinerSubsequence(
     val seq:List[Int],
     val split:Array[Int],
