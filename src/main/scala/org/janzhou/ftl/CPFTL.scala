@@ -5,10 +5,14 @@ import orestes.bloomfilter._
 import scala.collection.JavaConverters._
 import java.util.concurrent.Semaphore
 
+import org.janzhou.cminer._
+
 class CPFTL(device:Device) extends DFTL(device) with Runnable {
 
   println("CPFTL")
 
+  private val miner = new CMiner(0.1, 512, 64) // support, splitSize, depth
+  private val accessSequenceLength = 10240
   private val false_positive_rate = 0.001
 
   private var accessSequence = List[Int]()
@@ -44,7 +48,7 @@ class CPFTL(device:Device) extends DFTL(device) with Runnable {
       accessSequence.length
     }
 
-    if ( sequence_length >= 512 ) {
+    if ( sequence_length >= accessSequenceLength ) {
       if ( do_mining.availablePermits == 0 ) do_mining.release
     }
 
@@ -53,7 +57,7 @@ class CPFTL(device:Device) extends DFTL(device) with Runnable {
   }
 
   private def miningFrequentSubSequence (accessSequence:List[Int]):List[List[Int]] = {
-    accessSequence.grouped(64).toList
+    miner.mine(accessSequence)
   }
 
   override def run = {

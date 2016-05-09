@@ -76,7 +76,7 @@ run(){
     scalaDir="target/scala-2.11"
     target=$(ls -t1 ${scalaDir}/ssd_blkdev-assembly-*.jar |  head -n 1)
     testClass="${scalaDir}/test-classes"
-    cmd="sudo java $(cat bin/jvm-opts) -cp ${target}:${testClass} $*"
+    cmd="java $(cat bin/jvm-opts) -cp ${target}:${testClass} $*"
     echo $cmd
     $cmd
 }
@@ -86,23 +86,23 @@ ftl(){
 }
 
 insmod(){
-  sudo insmod src/main/c/kernel/ssd_blkdev.ko
+  insmod src/main/c/kernel/ssd_blkdev.ko
 }
 
 rmmod(){
-  sudo rmmod ssd_blkdev
+  rmmod ssd_blkdev
 }
 
 mkfs(){
-  sudo mkfs.$1 /dev/ssd_ramdisk
+  mkfs.$1 /dev/ssd_ramdisk
 }
 
 mount(){
-  sudo mount /dev/ssd_ramdisk /mnt
+  mount /dev/ssd_ramdisk /mnt
 }
 
 umount(){
-  sudo umount /dev/ssd_ramdisk
+  umount /dev/ssd_ramdisk
 }
 
 clean(){
@@ -116,7 +116,6 @@ kernel(){
 }
 
 build(){
-  kernel
   [ ! -f 'src/main/resources/default.conf' ] && config
   sbt assembly
 }
