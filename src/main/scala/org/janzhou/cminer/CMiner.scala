@@ -28,7 +28,7 @@ class CMiner(
 
   private def frequentSubsequence(list:List[CMinerSubsequence])
   :List[CMinerSubsequence] = {
-    val support = list.groupBy(identity).mapValues(_.length)
+    val support = list groupBy identity mapValues (_.length)
 
     val min = list.length * minSupport
 
