@@ -28,24 +28,14 @@ class CMiner(
 
   private def frequentSubsequence(list:List[CMinerSubsequence])
   :List[CMinerSubsequence] = {
-    var support = new HashMap[CMinerSubsequence, Int]()
-    for ( element <- list ) {
-      val count = {
-        if ( support.contains(element) ) {
-          val count = support(element)
-          support -= element
-          count + 1
-        } else {
-          1
-        }
-      }
-      support += ( element -> count )
-    }
+    val support = list.groupBy(identity).mapValues(_.length)
 
     val min = list.length * minSupport
+
     list.foreach { element =>
       element.support = support(element)
     }
+
     list.filter( _.support >= min )
   }
 
@@ -54,11 +44,9 @@ class CMiner(
     val splits = seq.grouped(splitSize).toList
 
     splits.flatMap( split => {
-      var pos = -1
-      split.map( access => {
-        pos += 1
+      split.zipWithIndex.map{ case (access, pos) => {
         new CMinerSubsequence(List(access), split.toArray, pos, null)
-      })
+      }}
     })
   }
 

@@ -20,10 +20,9 @@ class LSHMiner (
 
     val keys = lsh_buckets.mapValues(_.size).toList // ( key, count )
 
-    val hot = {
-      val min = groups.length * minSupport
-      keys.filter( _._2 >= min ).map(_._1)
-    }
+    val min = groups.length * minSupport
+    
+    val hot = keys.filter( _._2 >= min ).map(_._1)
 
     val hot_buckets = hot.map(
       lsh_buckets(_).map(_._2).fold(List[Int]())( _ ::: _ )
