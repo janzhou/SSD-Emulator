@@ -11,6 +11,7 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #include <linux/kernel.h>
 #include <linux/blkdev.h>
 #include <linux/vmalloc.h>
+#include <linux/pmem.h>
 
 #include "ssd_blkdev.h"
 #include "config.h"
@@ -27,9 +28,10 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #define SSD_DEV_MAX_MINORS 4
 
 //#define SSD_INVOLVE_USER
+#define SSD_USE_PMEM
 
 //static struct sector_request_map *request_map;
-static struct sector_request_map request_map[128];
+static struct sector_request_map request_map[512];
 static unsigned int request_size;
 
 static struct bio_list ssd_bio_queue;
@@ -47,8 +49,11 @@ static u8 lba_wait_flag, ppn_wait_flag, req_size_flag;
 
 static struct task_struct *user_app;
 
-//static void *ssd_dev_data;
+#ifdef SSD_USE_PMEM
+static void *ssd_dev_data;
+#else
 static u8 ssd_dev_data[SSD_TOTAL_SIZE];
+#endif
 
 int major;
 
@@ -109,7 +114,7 @@ static void ssd_dev_read_sector(unsigned long psn, u8 *buff)
 		return;
 	}
 
-	memcpy(buff, ssd_dev_data + psn * SSD_SECTOR_SIZE, SSD_SECTOR_SIZE);
+	memcpy_from_pmem(buff, ssd_dev_data + psn * SSD_SECTOR_SIZE, SSD_SECTOR_SIZE);
 }
 
 static void ssd_dev_write_sector(unsigned long psn, u8 *buff)
@@ -119,7 +124,8 @@ static void ssd_dev_write_sector(unsigned long psn, u8 *buff)
 		return;
 	}
 
-	memcpy(ssd_dev_data + psn * SSD_SECTOR_SIZE, buff, SSD_SECTOR_SIZE);
+	memcpy_to_pmem(ssd_dev_data + psn * SSD_SECTOR_SIZE, buff, SSD_SECTOR_SIZE);
+	wmb_pmem();
 }
 
 static void ssd_transfer(struct bio *bio)
@@ -231,7 +237,6 @@ static void ssd_make_request(struct request_queue *q, struct bio *bio)
 		goto err;
 
 	spin_lock_irqsave(&ssd_lck, flags);
-//	PINFO("%s: BIO: %p\n", __func__, bio);
 	bio_list_add_head(&ssd_bio_queue, bio);
 	spin_unlock_irqrestore(&ssd_lck, flags);
 
@@ -291,18 +296,20 @@ static int ssd_dev_create(void)
 	sprintf(ssd_disk->disk_name, "ssd_ramdisk");
 	set_capacity(ssd_disk, SSD_TOTAL_EXPOSED_SIZE / SSD_SECTOR_SIZE);
 
-	/* Allocate SSD flash memory and page buffer */
-//	ssd_dev_data = vzalloc(SSD_TOTAL_SIZE);
-//	if (!ssd_dev_data) {
-//		PERR("Failed to allocate memory for the disk space\n");
-//		ret = -ENOMEM;
-//		goto vzalloc_fail;
-//	}
+#ifdef SSD_USE_PMEM
+	ssd_dev_data = get_pmem_virt_addr();
+	if (!ssd_dev_data) {
+		PERR("Failed to get pmem\n");
+		goto pmem_fail;
+	}
+#endif
 
 	return 0;
 
-//vzalloc_fail:
-//	put_disk(ssd_disk);
+#ifdef SSD_USE_PMEM
+pmem_fail:
+	put_disk(ssd_disk);
+#endif
 disk_fail:
 	blk_cleanup_queue(ssd_queue);
 	return ret;
@@ -310,7 +317,6 @@ disk_fail:
 
 static void ssd_dev_destroy(void)
 {
-//	vfree(ssd_dev_data);
 	put_disk(ssd_disk);
 	blk_cleanup_queue(ssd_queue);
 }
