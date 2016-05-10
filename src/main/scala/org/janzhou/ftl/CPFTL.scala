@@ -79,7 +79,7 @@ class CPFTL(
       (bf, seq)
     })
 
-    val full = tmp_correlations.map(_._2).reduce( _ ::: _ )
+    val full = tmp_correlations.map(_._2).fold(List[Int]())( _ ::: _ )
     val tmp_bf:BloomFilter[Int] = new FilterBuilder(full.length, false_positive_rate).buildBloomFilter()
     tmp_bf.addAll(full.asJava)
 
