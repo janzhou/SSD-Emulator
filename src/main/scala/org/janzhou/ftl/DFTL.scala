@@ -56,7 +56,7 @@ class DFTL(device:Device) extends FTL(device) {
     }
   }
 
-  def cache(lpn:Int) = {
+  def cache(lpn:Int) = this.synchronized {
     if ( dftl_table(lpn).cached == false ) {
       dftl_table(lpn).cached = true
       dftl_table(lpn).dirty = false
