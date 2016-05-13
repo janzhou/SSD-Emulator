@@ -22,7 +22,7 @@ object Static {
   }
 
   private def printPrefetch = {
-    if ( _prefetchCount >= 4096 ) {
+    if ( _prefetchCount >= 8192 ) {
       println("prefetch delay " + ( _prefetchDelay / _prefetchCount ) + " ns" )
       _prefetchDelay = 0L
       _prefetchCount = 0L
@@ -34,16 +34,21 @@ object Static {
   private var _cacheHit = 0
   def cacheHit = {
     _cacheHit += 1
+    printCache
   }
 
   private var _cacheMiss = 0
   def cacheMiss = {
     _cacheMiss += 1
+    printCache
   }
 
   private def printCache = {
-    if( _cacheMiss + _cacheHit >= 4096 ) {
-      println("cache Hit/Miss " + _cacheHit + "/" + _cacheMiss)
+    if( _cacheMiss + _cacheHit >= 8192 ) {
+      val ratio:Double =   _cacheHit  * 100 / ( _cacheHit + _cacheMiss )
+      println("cache hit: " + ratio )
+      _cacheHit = 0
+      _cacheMiss = 0
     }
   }
 
