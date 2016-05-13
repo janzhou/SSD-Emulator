@@ -24,43 +24,54 @@ class CPFTL(
 
   private val MineSystem = ActorSystem("Miner")
   private val mineActor = MineSystem.actorOf(Props(new MineActor()))
+  private val prefetchActor = MineSystem.actorOf(Props(new PrefetchActor()))
 
   private var correlations = List[(BloomFilter[Int], List[Int])]()
   private var bf:BloomFilter[Int] = new FilterBuilder(0, false_positive_rate).buildBloomFilter()
 
-  def prefetch(lpn:Int) = {
-    val (tmp_correlations, tmp_bf) = miner.synchronized{
-      (correlations, bf)
-    }
-
-    if ( !dftl_table(lpn).cached ) {
-      if( false_positive_rate > 0 ) {
-        if ( tmp_bf.contains(lpn) ) {
-          for( (bf, correlation) <- tmp_correlations ) {
-            if ( bf.contains(lpn) ) {
-              correlation.foreach( lpn => cache(lpn) )
-            }
-          }
-        }
-      } else {
-        tmp_correlations.map(_._2).filter( _.contains(lpn) )
-        .foreach( seq =>
-          seq.foreach( lpn => cache(lpn) )
-        )
-      }
-    }
-  }
-
   override def read(lpn:Int):Int = {
     Static.prefetchStart
-    mineActor ! NewAccess(lpn)
-    prefetch(lpn)
+    prefetchActor ! NewAccess(lpn)
     Static.prefetchStop
     super.read(lpn)
   }
 
   case class NewAccess(lpn:Int)
   case class NewSequence(seq:List[Int])
+
+  class PrefetchActor extends Actor with ActorLogging {
+    private var accessSequence = ArrayBuffer[Int]()
+
+    private def prefetch(lpn:Int) = {
+      val (tmp_correlations, tmp_bf) = miner.synchronized{
+        (correlations, bf)
+      }
+
+      if ( !dftl_table(lpn).cached ) {
+        if( false_positive_rate > 0 ) {
+          if ( tmp_bf.contains(lpn) ) {
+            for( (bf, correlation) <- tmp_correlations ) {
+              if ( bf.contains(lpn) ) {
+                correlation.foreach( lpn => cache(lpn) )
+              }
+            }
+          }
+        } else {
+          tmp_correlations.map(_._2).filter( _.contains(lpn) )
+          .foreach( seq =>
+            seq.foreach( lpn => cache(lpn) )
+          )
+        }
+      }
+    }
+
+    def receive = {
+      case NewAccess(lpn) => {
+        prefetch(lpn)
+        mineActor ! NewAccess(lpn)
+      }
+    }
+  }
 
   class MineActor extends Actor with ActorLogging {
     private var accessSequence = ArrayBuffer[Int]()
