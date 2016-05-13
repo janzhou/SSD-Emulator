@@ -33,7 +33,13 @@ class CPFTL(
     Static.prefetchStart
     prefetchActor ! NewAccess(lpn)
     Static.prefetchStop
-    super.read(lpn)
+
+    if ( dftl_table(lpn).cached == false ) {
+      Static.cacheMiss
+    } else {
+      Static.cacheHit
+    }
+    super.realRead(lpn)
   }
 
   case class NewAccess(lpn:Int)

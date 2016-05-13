@@ -69,7 +69,7 @@ class DFTL(device:Device) extends FTL(device) {
     clean_cache
   }
 
-  def read(lpn:Int):Int = {
+  protected def realRead(lpn:Int):Int = {
     if ( dftl_table(lpn).cached == false ) {
       cache(lpn)
 
@@ -78,6 +78,15 @@ class DFTL(device:Device) extends FTL(device) {
 
     device.PageReadDelay //data
     dftl_table(lpn).ppn
+  }
+
+  def read(lpn:Int):Int = {
+    if ( dftl_table(lpn).cached == false ) {
+      Static.cacheMiss
+    } else {
+      Static.cacheHit
+    }
+    realRead(lpn)
   }
 
   protected def move = {
