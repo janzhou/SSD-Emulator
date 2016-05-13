@@ -1,9 +1,15 @@
 package org.janzhou.ftl
 
+import akka.actor.{ActorSystem, Props}
+import akka.actor.{ActorLogging, Actor, ActorRef}
+import akka.pattern.ask
+
 import java.util.concurrent.TimeUnit
 import orestes.bloomfilter._
 import scala.collection.JavaConverters._
 import java.util.concurrent.Semaphore
+
+import scala.collection.mutable.ArrayBuffer
 
 import org.janzhou.cminer._
 
@@ -12,23 +18,20 @@ class CPFTL(
   val miner:Miner = new CMiner(),
   val accessSequenceLength:Int = 4096,
   val false_positive_rate:Double = 0.001
-) extends DFTL(device) with Runnable {
+) extends DFTL(device) {
 
   println("CPFTL")
 
-  private var accessSequence = List[Int]()
+  private val MineSystem = ActorSystem("Miner")
+  private val mineActor = MineSystem.actorOf(Props(new MineActor()))
+
   private var correlations = List[(BloomFilter[Int], List[Int])]()
   private var bf:BloomFilter[Int] = new FilterBuilder(0, false_positive_rate).buildBloomFilter()
 
-  private val do_mining = new Semaphore(0);
-
   def prefetch(lpn:Int) = {
-    val tmp = this.synchronized{
+    val (tmp_correlations, tmp_bf) = miner.synchronized{
       (correlations, bf)
     }
-
-    val tmp_correlations = tmp._1
-    val tmp_bf = tmp._2
 
     if ( !dftl_table(lpn).cached ) {
       if( false_positive_rate > 0 ) {
@@ -50,64 +53,54 @@ class CPFTL(
 
   override def read(lpn:Int):Int = {
     Static.prefetchStart
-    val sequence_length = this.synchronized{
-      accessSequence = accessSequence :+ lpn
-      accessSequence.length
-    }
-
-    if ( sequence_length >= accessSequenceLength ) {
-      if ( do_mining.availablePermits == 0 ) do_mining.release
-    }
-
+    mineActor ! NewAccess(lpn)
     prefetch(lpn)
     Static.prefetchStop
     super.read(lpn)
   }
 
-  private def miningFrequentSubSequence (accessSequence:List[Int]):List[List[Int]] = {
-    miner.mine(accessSequence)
+  case class NewAccess(lpn:Int)
+  case class NewSequence(seq:List[Int])
+
+  class MineActor extends Actor with ActorLogging {
+    private var accessSequence = ArrayBuffer[Int]()
+
+    def receive = {
+      case NewAccess(lpn) => {
+        accessSequence = accessSequence :+ lpn
+        if ( accessSequence.length >= accessSequenceLength ) {
+          val tmp_accessSequence = accessSequence
+          accessSequence = ArrayBuffer[Int]()
+          self ! NewSequence(tmp_accessSequence.toList)
+        }
+      }
+      case NewSequence(tmp_accessSequence) => {
+        val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
+        .map(seq => {
+          val bf:BloomFilter[Int] = new FilterBuilder(seq.length, false_positive_rate).buildBloomFilter()
+          bf.addAll(seq.asJava)
+          (bf, seq)
+        })
+
+        val tmp_bf = if( false_positive_rate > 0 ) {
+          val full = tmp_correlations.map(_._2).fold(List[Int]())( _ ::: _ )
+          val tmp_bf:BloomFilter[Int] = new FilterBuilder(full.length, false_positive_rate).buildBloomFilter()
+          tmp_bf.addAll(full.asJava)
+          tmp_bf
+        } else {
+          null
+        }
+
+        miner.synchronized{
+          correlations = tmp_correlations
+          bf = tmp_bf
+        }
+      }
+    }
+
+
+    private def miningFrequentSubSequence (accessSequence:List[Int]):List[List[Int]] = {
+      miner.mine(accessSequence.toList)
+    }
   }
-
-  override def run = {
-
-    do_mining.acquire
-
-    val tmp_accessSequence = this.synchronized {
-      val sequence = accessSequence
-      accessSequence = List[Int]()
-      sequence
-    }
-
-    val (tmp_correlations, tmp_bf) = if( false_positive_rate > 0 ) {
-      val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
-      .map(seq => {
-        val bf:BloomFilter[Int] = new FilterBuilder(seq.length, false_positive_rate).buildBloomFilter()
-        bf.addAll(seq.asJava)
-        (bf, seq)
-      })
-
-      val full = tmp_correlations.map(_._2).fold(List[Int]())( _ ::: _ )
-      val tmp_bf:BloomFilter[Int] = new FilterBuilder(full.length, false_positive_rate).buildBloomFilter()
-      tmp_bf.addAll(full.asJava)
-
-      (tmp_correlations, tmp_bf)
-    } else {
-      val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
-      .map(seq => {
-        val bf:BloomFilter[Int] = null
-        (bf, seq)
-      })
-
-      (tmp_correlations, null)
-    }
-
-    this.synchronized {
-      correlations = tmp_correlations
-      bf = tmp_bf
-    }
-  }
-
-  val thread = new Thread(this)
-  thread.start()
-
 }
