@@ -110,6 +110,8 @@ class CPFTL(
         }
 
         prefetchActor ! NewCorrelations(tmp_correlations, tmp_bf)
+
+        println("#correlations: " + tmp_correlations.length)
       }
     }
 
