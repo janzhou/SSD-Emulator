@@ -1,5 +1,6 @@
 package org.janzhou.cminer
 
+import scala.collection.mutable.ArrayBuffer
 import info.debatty.java.lsh.LSHSuperBit
 
 class LSHMiner (
@@ -11,15 +12,15 @@ class LSHMiner (
 ) extends CMiner (minSupport, splitSize, depth) {
   private val lsh = new LSHSuperBit(stages, buckets, splitSize)
 
-  override def mine(seq:List[Int]):List[List[Int]] = {
-    val groups = seq.grouped(splitSize).toList
+  override def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
+    val groups = seq.grouped(splitSize).to[ArrayBuffer]
 
     val lsh_buckets = groups.map( seq =>
       (lsh.hash(seq.toArray)(stages - 1), seq)
-    ).groupBy( _._1 ) // Map( group -> ( group, List[List[Int]] ) )
+    ).groupBy( _._1 ) // Map( group -> ( group, ArrayBuffer[ArrayBuffer[Int]] ) )
 
     /*
-    val keys = lsh_buckets.mapValues(_.size).toList // ( key, count )
+    val keys = lsh_buckets.mapValues(_.size).toArrayBuffer // ( key, count )
 
     val min = groups.length * minSupport
 
@@ -33,6 +34,6 @@ class LSHMiner (
     */
     val freqInBucket = lsh_buckets.map(_._2).map( splits => mineSplits(splits.map(_._2)) )
 
-    freqInBucket.fold(List[List[Int]]())( _ ::: _ ).distinct
+    freqInBucket.fold(ArrayBuffer[ArrayBuffer[Int]]())( _ ++= _ ).distinct
   }
 }

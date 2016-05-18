@@ -1,5 +1,7 @@
 package org.janzhou.ftl
 
+import scala.collection.mutable.ArrayBuffer
+
 object Static {
 
   def now:Long = {
@@ -53,12 +55,12 @@ object Static {
   }
 
   private var _miningStart:Long = 0L
-  def miningStart(seq:List[Int]) = {
+  def miningStart(seq:ArrayBuffer[Int]) = {
     _miningStart = now
     println("mining start: " + seq.length)
   }
 
-  def miningStop(correlations:List[List[Int]]) = {
+  def miningStop(correlations:ArrayBuffer[ArrayBuffer[Int]]) = {
     println("mining stop: " + correlations.length + " time spend: " + (now - _miningStart) + " ns")
   }
 

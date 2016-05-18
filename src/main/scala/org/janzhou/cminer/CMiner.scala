@@ -1,10 +1,11 @@
 package org.janzhou.cminer
 
+import scala.collection.mutable.ArrayBuffer
 import collection.mutable.HashMap
 import scala.util.control.Breaks
 
 trait Miner {
-  def mine(seq:List[Int]):List[List[Int]]
+  def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]]
 }
 
 class CMiner (
@@ -13,10 +14,9 @@ class CMiner (
   val depth:Int = 64
 ) extends Miner {
   class CMinerSubsequence(
-    val seq:List[Int],
+    val seq:ArrayBuffer[Int],
     val split:Array[Int],
-    val pos:Int,
-    val father:CMinerSubsequence
+    val pos:Int
   ) {
     var support = 0
 
@@ -30,8 +30,8 @@ class CMiner (
     }
   }
 
-  private def frequentSubsequence(list:List[CMinerSubsequence], minSupport:Int)
-  :List[CMinerSubsequence] = {
+  private def frequentSubsequence(list:ArrayBuffer[CMinerSubsequence], minSupport:Int)
+  :ArrayBuffer[CMinerSubsequence] = {
     val support = list groupBy identity mapValues (_.length)
 
     list.foreach { element =>
@@ -41,27 +41,27 @@ class CMiner (
     list.filter( _.support >= minSupport )
   }
 
-  private def firstLevelSubSequences(splits:List[List[Int]])
-  :List[CMinerSubsequence] = {
+  private def firstLevelSubSequences(splits:ArrayBuffer[ArrayBuffer[Int]])
+  :ArrayBuffer[CMinerSubsequence] = {
     splits.flatMap( split => {
       split.zipWithIndex.map{ case (access, pos) => {
-        new CMinerSubsequence(List(access), split.toArray, pos, null)
+        new CMinerSubsequence(ArrayBuffer(access), split.toArray, pos)
       }}
     })
   }
 
-  private def nextLevelSubSequence(list:List[CMinerSubsequence])
-  :List[CMinerSubsequence] = {
+  private def nextLevelSubSequence(list:ArrayBuffer[CMinerSubsequence])
+  :ArrayBuffer[CMinerSubsequence] = {
     list.flatMap( father => {
       for ( pos <- father.pos + 1 to father.split.length - 1 ) yield {
         val seq = father.seq :+ father.split(pos)
-        new CMinerSubsequence(seq, father.split, pos, father)
+        new CMinerSubsequence(seq, father.split, pos)
       }
     })
   }
 
-  protected def mineSplits(splits:List[List[Int]])
-  :List[List[Int]] = {
+  protected def mineSplits(splits:ArrayBuffer[ArrayBuffer[Int]])
+  :ArrayBuffer[ArrayBuffer[Int]] = {
     var subSequence = frequentSubsequence(
       firstLevelSubSequences(splits),
       minSupport
@@ -77,8 +77,8 @@ class CMiner (
     subSequence.map( _.seq ).distinct
   }
 
-  def mine(seq:List[Int]):List[List[Int]] = {
-    mineSplits(seq.grouped(splitSize).toList)
+  def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
+    mineSplits(seq.grouped(splitSize).to[ArrayBuffer])
   }
 
   assert(splitSize >= depth)

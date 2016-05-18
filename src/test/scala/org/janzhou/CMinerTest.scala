@@ -1,13 +1,14 @@
 package org.janzhou.test
 
 import org.janzhou.cminer._
+import scala.collection.mutable.ArrayBuffer
 
 import util.Random
 
 object CMinerTest {
   def main (args: Array[String]) {
     val miner = new LSHMiner(2, 3, 3)
-    val seq = List(
+    val seq = ArrayBuffer(
       0,1,3,
       0,1,3,
       0,1,3,

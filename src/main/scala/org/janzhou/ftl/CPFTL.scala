@@ -38,12 +38,12 @@ class CPFTL(
   }
 
   case class NewAccess(lpn:Int)
-  case class NewSequence(seq:List[Int])
-  case class NewCorrelations(correlations: HashMap[Int, List[Int]])
+  case class NewSequence(seq:ArrayBuffer[Int])
+  case class NewCorrelations(correlations: HashMap[Int, ArrayBuffer[Int]])
 
   class PrefetchActor extends Actor with ActorLogging {
     private var accessSequence = ArrayBuffer[Int]()
-    private var correlations = HashMap[Int, List[Int]]()
+    private var correlations = HashMap[Int, ArrayBuffer[Int]]()
 
     private def prefetch(lpn:Int) = {
       if ( dftl_table(lpn).cached == false ) {
@@ -71,11 +71,11 @@ class CPFTL(
 
     def receive = {
       case NewAccess(lpn) => {
-        accessSequence = accessSequence :+ lpn
+        accessSequence += lpn
         if ( accessSequence.length >= accessSequenceLength ) {
           val tmp_accessSequence = accessSequence
           accessSequence = ArrayBuffer[Int]()
-          self ! NewSequence(tmp_accessSequence.toList)
+          self ! NewSequence(tmp_accessSequence)
         }
       }
       case NewSequence(tmp_accessSequence) => {
@@ -83,12 +83,11 @@ class CPFTL(
         val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
         Static.miningStop(tmp_correlations)
 
-        var correlations = HashMap[Int, List[Int]]()
+        var correlations = HashMap[Int, ArrayBuffer[Int]]()
         tmp_correlations.foreach(seq => {
           seq.foreach(lba => {
             if( correlations contains lba ) {
-              val new_seq = seq ::: correlations(lba)
-              correlations += lba -> new_seq
+              correlations(lba) ++= seq
             } else {
               correlations += lba -> seq
             }
@@ -102,8 +101,8 @@ class CPFTL(
     }
 
 
-    private def miningFrequentSubSequence (accessSequence:List[Int]):List[List[Int]] = {
-      miner.mine(accessSequence.toList)
+    private def miningFrequentSubSequence (accessSequence:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
+      miner.mine(accessSequence)
     }
   }
 }
