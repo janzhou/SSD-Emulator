@@ -10,14 +10,14 @@ import scala.collection.JavaConverters._
 import java.util.concurrent.Semaphore
 
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.HashMap
 
 import org.janzhou.cminer._
 
 class CPFTL(
   val device:Device,
   val miner:Miner = new CMiner(),
-  val accessSequenceLength:Int = 4096,
-  val false_positive_rate:Double = 0.001
+  val accessSequenceLength:Int = 4096
 ) extends DFTL(device) {
 
   println("CPFTL")
@@ -42,30 +42,17 @@ class CPFTL(
 
   case class NewAccess(lpn:Int)
   case class NewSequence(seq:List[Int])
-  case class NewCorrelations(
-    correlations: List[(BloomFilter[Int], List[Int])],
-    bf:BloomFilter[Int]
-  )
+  case class NewCorrelations(correlations: HashMap[Int, List[Int]])
 
   class PrefetchActor extends Actor with ActorLogging {
     private var accessSequence = ArrayBuffer[Int]()
-    private var correlations = List[(BloomFilter[Int], List[Int])]()
-    private var bf:BloomFilter[Int] = new FilterBuilder(0, false_positive_rate).buildBloomFilter()
+    private var correlations = HashMap[Int, List[Int]]()
 
     private def prefetch(lpn:Int) = {
-      if( false_positive_rate > 0 ) {
-        if ( bf.contains(lpn) ) {
-          for( (bf, correlation) <- correlations ) {
-            if ( bf.contains(lpn) ) {
-              correlation.foreach( lpn => cache(lpn) )
-            }
-          }
-        }
-      } else {
-        correlations.map(_._2).filter( _.contains(lpn) )
-        .foreach( seq =>
-          seq.foreach( lpn => cache(lpn) )
-        )
+      if ( correlations contains lpn ) {
+        correlations(lpn).foreach(lpn => {
+          cache(lpn)
+        })
       }
     }
 
@@ -74,9 +61,8 @@ class CPFTL(
         prefetch(lpn)
         mineActor ! NewAccess(lpn)
       }
-      case NewCorrelations(tmp_correlations, tmp_bf) => {
+      case NewCorrelations(tmp_correlations) => {
         correlations = tmp_correlations
-        bf = tmp_bf
       }
     }
   }
@@ -95,26 +81,24 @@ class CPFTL(
       }
       case NewSequence(tmp_accessSequence) => {
         Static.miningStart(tmp_accessSequence)
-        val correlations = miningFrequentSubSequence(tmp_accessSequence)
-        val tmp_correlations = correlations
-        .map(seq => {
-          val bf:BloomFilter[Int] = new FilterBuilder(seq.length, false_positive_rate).buildBloomFilter()
-          bf.addAll(seq.asJava)
-          (bf, seq)
+        val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
+        Static.miningStop(tmp_correlations)
+
+        var correlations = HashMap[Int, List[Int]]()
+        tmp_correlations.foreach(seq => {
+          seq.foreach(lba => {
+            if( correlations contains lba ) {
+              val new_seq = seq ::: correlations(lba)
+              correlations += lba -> new_seq
+            } else {
+              correlations += lba -> seq
+            }
+          })
         })
 
-        val tmp_bf = if( false_positive_rate > 0 ) {
-          val full = tmp_correlations.map(_._2).fold(List[Int]())( _ ::: _ )
-          val tmp_bf:BloomFilter[Int] = new FilterBuilder(full.length, false_positive_rate).buildBloomFilter()
-          tmp_bf.addAll(full.asJava)
-          tmp_bf
-        } else {
-          null
-        }
-
-        prefetchActor ! NewCorrelations(tmp_correlations, tmp_bf)
-
-        Static.miningStop(correlations)
+        prefetchActor ! NewCorrelations(correlations.map{
+          case (k, v) => (k, v.distinct)
+        })
       }
     }
 
