@@ -6,8 +6,19 @@ import org.janzhou.native._
 import org.janzhou.cminer._
 import java.util.Calendar
 import java.text.SimpleDateFormat
+import com.typesafe.config.{ Config, ConfigFactory }
 
 object main {
+  private def load_config(config: Array[String]):Config = {
+    val _config = config.reverse ++ Array("default", "cminer", "lshminer")
+    _config.map(config => ConfigFactory.load(config) )
+    .reduce(_.withFallback(_))
+  }
+
+  private def load_config():Config = {
+    ConfigFactory.load("default")
+  }
+
   class GCThread(ftl:FTL) extends Thread {
     var _heartbeat = 0
 
@@ -39,6 +50,8 @@ object main {
     }
   }
 
+
+
   def main (args: Array[String]) {
     val fd = libc.run.open("/dev/ssd_ramdisk", libc.O_RDWR)
 
@@ -52,22 +65,32 @@ object main {
 
     val req_size = libc.run().malloc(8)
 
-    val device = if ( args.length >= 2 ) {
-      new Device(fd, args(1))
+    val config = if ( args.length > 1 ) {
+      val ( _, config ) = args splitAt 1
+      load_config(config)
     } else {
-      new Device(fd)
+      load_config()
     }
+
+    val device = new Device(fd, config)
+
     val ftl:FTL = if( args.isEmpty ) {
       new DirectFTL(device)
     } else {
       args(0) match {
-        case "DirectFTL" => new DirectFTL(device)
-        case "DFTL" => new DFTL(device)
         case "dftl" => new DFTL(device)
-        case "CPFTL" => new CPFTL(device)
-        case "cpftl" => new CPFTL(device)
-        case "LSHFTL" => new CPFTL(device, new LSHMiner())
-        case "lshftl" => new CPFTL(device, new LSHMiner())
+        case "cpftl" => new CPFTL(device, new CMiner(
+          config.getInt("CMiner.minSupport"),
+          config.getInt("CMiner.splitSize"),
+          config.getInt("CMiner.depth")
+        ))
+        case "lshftl" => new CPFTL(device, new LSHMiner(
+          config.getInt("LSHMiner.minSupport"),
+          config.getInt("LSHMiner.splitSize"),
+          config.getInt("LSHMiner.depth"),
+          config.getInt("LSHMiner.buckets"),
+          config.getInt("LSHMiner.stages")
+        ))
         case _ => new DirectFTL(device)
       }
     }
