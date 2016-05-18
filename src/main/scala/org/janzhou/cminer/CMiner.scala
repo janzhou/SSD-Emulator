@@ -16,7 +16,8 @@ class CMiner (
   class CMinerSubsequence(
     val seq:ArrayBuffer[Int],
     val split:Array[Int],
-    val pos:Int
+    val pos:Int,
+    val father_support:Int
   ) {
     var support = 0
 
@@ -38,14 +39,22 @@ class CMiner (
       element.support = support(element)
     }
 
-    list.filter( _.support >= minSupport )
+    def filter(e:CMinerSubsequence):Boolean = {
+      if( e.father_support >= minSupport ) {
+        e.support >= minSupport || e.support < (e.father_support / 2)
+      } else {
+        e.support >= minSupport
+      }
+    }
+
+    list.filter( filter(_) )
   }
 
   private def firstLevelSubSequences(splits:ArrayBuffer[ArrayBuffer[Int]])
   :ArrayBuffer[CMinerSubsequence] = {
     splits.flatMap( split => {
       split.zipWithIndex.map{ case (access, pos) => {
-        new CMinerSubsequence(ArrayBuffer(access), split.toArray, pos)
+        new CMinerSubsequence(ArrayBuffer(access), split.toArray, pos, 0)
       }}
     })
   }
@@ -55,7 +64,7 @@ class CMiner (
     list.flatMap( father => {
       for ( pos <- father.pos + 1 to father.split.length - 1 ) yield {
         val seq = father.seq :+ father.split(pos)
-        new CMinerSubsequence(seq, father.split, pos)
+        new CMinerSubsequence(seq, father.split, pos, father.support)
       }
     })
   }
