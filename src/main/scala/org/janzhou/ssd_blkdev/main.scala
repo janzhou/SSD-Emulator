@@ -6,12 +6,15 @@ import org.janzhou.native._
 import org.janzhou.cminer._
 import java.util.Calendar
 import java.text.SimpleDateFormat
+import java.io.File
 import com.typesafe.config.{ Config, ConfigFactory }
 
 object main {
   private def load_config(config: Array[String]):Config = {
     val _config = config.reverse ++ Array("default", "cminer", "lshminer", "cpftl")
-    _config.map(config => ConfigFactory.load(config) )
+    _config.map(config => if( config.endsWith(".conf") ) {
+      ConfigFactory.parseFile(new File(config))
+    } else ConfigFactory.load(config) )
     .reduce(_.withFallback(_))
   }
 
