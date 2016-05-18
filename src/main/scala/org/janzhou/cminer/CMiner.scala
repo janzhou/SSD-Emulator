@@ -70,7 +70,7 @@ class CMiner (
   }
 
   private def miningNext(list:ArrayBuffer[CMinerSubsequence], minSupport:Int, depth:Int)
-  :Map[CMinerSubsequence, ArrayBuffer[CMinerSubsequence]] = {
+  :Iterable[CMinerSubsequence] = {
     val subSeq = if( depth == this.depth ) {
       frequentSubsequence(
         list,
@@ -84,10 +84,10 @@ class CMiner (
     }
 
     if ( depth == 1 || subSeq.size == 0) {
-      subSeq
+      subSeq.keys
     } else {
       subSeq.map{ case (e, seq) => {miningNext(seq, minSupport, depth - 1)} }
-      .fold(Map[CMinerSubsequence, ArrayBuffer[CMinerSubsequence]]())( _ ++ _)
+      .fold(Iterable[CMinerSubsequence]())( _ ++ _)
     }
   }
 
@@ -97,7 +97,7 @@ class CMiner (
       firstLevelSubSequences(splits),
       minSupport,
       depth
-    ).keys.to[ArrayBuffer].map(_.seq)
+    ).to[ArrayBuffer].map(_.seq)
   }
 
   def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
