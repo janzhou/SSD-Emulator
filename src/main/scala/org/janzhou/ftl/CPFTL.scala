@@ -4,10 +4,7 @@ import akka.actor.{ActorSystem, Props}
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.pattern.ask
 
-import java.util.concurrent.TimeUnit
-import orestes.bloomfilter._
 import scala.collection.JavaConverters._
-import java.util.concurrent.Semaphore
 
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
