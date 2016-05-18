@@ -10,7 +10,7 @@ import com.typesafe.config.{ Config, ConfigFactory }
 
 object main {
   private def load_config(config: Array[String]):Config = {
-    val _config = config.reverse ++ Array("default", "cminer", "lshminer")
+    val _config = config.reverse ++ Array("default", "cminer", "lshminer", "cpftl")
     _config.map(config => ConfigFactory.load(config) )
     .reduce(_.withFallback(_))
   }
@@ -79,18 +79,24 @@ object main {
     } else {
       args(0) match {
         case "dftl" => new DFTL(device)
-        case "cpftl" => new CPFTL(device, new CMiner(
-          config.getInt("CMiner.minSupport"),
-          config.getInt("CMiner.splitSize"),
-          config.getInt("CMiner.depth")
-        ))
-        case "lshftl" => new CPFTL(device, new LSHMiner(
-          config.getInt("LSHMiner.minSupport"),
-          config.getInt("LSHMiner.splitSize"),
-          config.getInt("LSHMiner.depth"),
-          config.getInt("LSHMiner.buckets"),
-          config.getInt("LSHMiner.stages")
-        ))
+        case "cpftl" => new CPFTL(device,
+          new CMiner(
+            config.getInt("CMiner.minSupport"),
+            config.getInt("CMiner.splitSize"),
+            config.getInt("CMiner.depth")
+          ),
+          config.getInt("CPFTL.accessSequenceLength")
+        )
+        case "lshftl" => new CPFTL(device,
+          new LSHMiner(
+            config.getInt("LSHMiner.minSupport"),
+            config.getInt("LSHMiner.splitSize"),
+            config.getInt("LSHMiner.depth"),
+            config.getInt("LSHMiner.buckets"),
+            config.getInt("LSHMiner.stages")
+          ),
+          config.getInt("CPFTL.accessSequenceLength")
+        )
         case _ => new DirectFTL(device)
       }
     }
