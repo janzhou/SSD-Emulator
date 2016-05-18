@@ -47,8 +47,6 @@ class CMiner (
 
     subSeq.foreach{ case (e, list) => list.foreach(e => e.support = list.length)}
 
-    //subSeq.foreach{ case (e, list) => println(e.seq) }
-
     subSeq
   }
 
