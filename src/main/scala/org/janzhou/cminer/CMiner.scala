@@ -32,14 +32,10 @@ class CMiner (
   }
 
   private def frequentSubsequence(list:ArrayBuffer[CMinerSubsequence], minSupport:Int)
-  :ArrayBuffer[CMinerSubsequence] = {
-    val support = list groupBy identity mapValues (_.length)
-
-    list.foreach { element =>
-      element.support = support(element)
-    }
-
-    def filter(e:CMinerSubsequence):Boolean = {
+  :Map[CMinerSubsequence, ArrayBuffer[CMinerSubsequence]] = {
+    def filter(e:CMinerSubsequence, list:ArrayBuffer[CMinerSubsequence])
+    :Boolean = {
+      e.support = list.length
       if( e.father_support >= minSupport ) {
         e.support >= minSupport || e.support < (e.father_support / 2)
       } else {
@@ -47,7 +43,13 @@ class CMiner (
       }
     }
 
-    list.filter( filter(_) )
+    val subSeq = list groupBy identity filter{ case (e, list) => filter(e, list) }
+
+    subSeq.foreach{ case (e, list) => list.foreach(e => e.support = list.length)}
+
+    //subSeq.foreach{ case (e, list) => println(e.seq) }
+
+    subSeq
   }
 
   private def firstLevelSubSequences(splits:ArrayBuffer[ArrayBuffer[Int]])
@@ -69,21 +71,35 @@ class CMiner (
     })
   }
 
-  protected def mineSplits(splits:ArrayBuffer[ArrayBuffer[Int]])
-  :ArrayBuffer[ArrayBuffer[Int]] = {
-    var subSequence = frequentSubsequence(
-      firstLevelSubSequences(splits),
-      minSupport
-    )
-
-    for ( i <- 1 to depth - 1 ) {
-      subSequence = frequentSubsequence(
-        nextLevelSubSequence(subSequence),
+  private def miningNext(list:ArrayBuffer[CMinerSubsequence], minSupport:Int, depth:Int)
+  :Map[CMinerSubsequence, ArrayBuffer[CMinerSubsequence]] = {
+    val subSeq = if( depth == this.depth ) {
+      frequentSubsequence(
+        list,
+        minSupport
+      )
+    } else {
+      frequentSubsequence(
+        nextLevelSubSequence(list),
         minSupport
       )
     }
 
-    subSequence.map( _.seq ).distinct
+    if ( depth == 1 || subSeq.size == 0) {
+      subSeq
+    } else {
+      subSeq.map{ case (e, seq) => {miningNext(seq, minSupport, depth - 1)} }
+      .fold(Map[CMinerSubsequence, ArrayBuffer[CMinerSubsequence]]())( _ ++ _)
+    }
+  }
+
+  protected def mineSplits(splits:ArrayBuffer[ArrayBuffer[Int]])
+  :ArrayBuffer[ArrayBuffer[Int]] = {
+    miningNext(
+      firstLevelSubSequences(splits),
+      minSupport,
+      depth
+    ).keys.to[ArrayBuffer].map(_.seq)
   }
 
   def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
