@@ -60,10 +60,10 @@ class CMiner (
     })
   }
 
-  protected def mineSplit(split:List[List[Int]])
+  protected def mineSplits(splits:List[List[Int]])
   :List[List[Int]] = {
     var subSequence = frequentSubsequence(
-      firstLevelSubSequences(split),
+      firstLevelSubSequences(splits),
       minSupport
     )
 
@@ -78,7 +78,7 @@ class CMiner (
   }
 
   def mine(seq:List[Int]):List[List[Int]] = {
-    mineSplit(seq.grouped(splitSize).toList)
+    mineSplits(seq.grouped(splitSize).toList)
   }
 
   assert(splitSize >= depth)

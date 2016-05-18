@@ -18,6 +18,7 @@ class LSHMiner (
       (lsh.hash(seq.toArray)(stages - 1), seq)
     ).groupBy( _._1 ) // Map( group -> ( group, List[List[Int]] ) )
 
+    /*
     val keys = lsh_buckets.mapValues(_.size).toList // ( key, count )
 
     val min = groups.length * minSupport
@@ -29,6 +30,8 @@ class LSHMiner (
     )
 
     val freqInBucket = hot_buckets.map( split => mineSplit(split) )
+    */
+    val freqInBucket = lsh_buckets.map(_._2).map( splits => mineSplits(splits.map(_._2)) )
 
     freqInBucket.fold(List[List[Int]]())( _ ::: _ ).distinct
   }
