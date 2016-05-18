@@ -49,10 +49,12 @@ class CPFTL(
     private var correlations = HashMap[Int, List[Int]]()
 
     private def prefetch(lpn:Int) = {
-      if ( correlations contains lpn ) {
-        correlations(lpn).foreach(lpn => {
-          cache(lpn)
-        })
+      if ( dftl_table(lpn).cached == false ) {
+        if ( correlations contains lpn ) {
+          correlations(lpn).foreach(lpn => {
+            cache(lpn)
+          })
+        }
       }
     }
 
