@@ -15,7 +15,7 @@ class CMiner (
 ) extends Miner {
   class CMinerSubsequence(
     val seq:ArrayBuffer[Int],
-    val split:Array[Int],
+    val split:ArrayBuffer[Int],
     val pos:Int,
     val father_support:Int
   ) {
@@ -47,16 +47,27 @@ class CMiner (
 
     subSeq.foreach{ case (e, list) => list.foreach(e => e.support = list.length)}
 
+    //subSeq.keys.foreach( x => println(x.seq) )
+
     subSeq
   }
 
-  private def firstLevelSubSequences(splits:ArrayBuffer[ArrayBuffer[Int]])
-  :ArrayBuffer[CMinerSubsequence] = {
-    splits.flatMap( split => {
-      split.zipWithIndex.map{ case (access, pos) => {
-        new CMinerSubsequence(ArrayBuffer(access), split.toArray, pos, 0)
+  protected def firstLevelSubSequences(
+    input:ArrayBuffer[Int],
+    minSupport:Int,
+    splitSize:Int
+  ):ArrayBuffer[CMinerSubsequence] = {
+    val count = input.groupBy(identity).mapValues(_.size)
+    val filtered = input.filter( count(_) >= minSupport )
+    val ret = filtered.grouped(splitSize).flatMap( split => {
+      split.zipWithIndex.flatMap{ case (access, pos) => {
+        for ( p <- pos + 1 to split.length - 1 ) yield {
+          new CMinerSubsequence(ArrayBuffer(access, split(p)), split, p, count(access))
+        }
       }}
-    })
+    }).to[ArrayBuffer]
+    //ret.map(x => println(x.seq))
+    ret
   }
 
   private def nextLevelSubSequence(list:ArrayBuffer[CMinerSubsequence])
@@ -91,17 +102,17 @@ class CMiner (
     }
   }
 
-  protected def mineSplits(splits:ArrayBuffer[ArrayBuffer[Int]])
+  protected def mine(input:ArrayBuffer[Int], minSupport:Int, splitSize:Int)
   :ArrayBuffer[ArrayBuffer[Int]] = {
     miningNext(
-      firstLevelSubSequences(splits),
+      firstLevelSubSequences(input, minSupport, splitSize),
       minSupport,
-      depth
+      depth - 2
     ).to[ArrayBuffer].map(_.seq)
   }
 
   def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
-    mineSplits(seq.grouped(splitSize).to[ArrayBuffer])
+    mine(seq, minSupport, splitSize)
   }
 
   assert(splitSize >= depth)

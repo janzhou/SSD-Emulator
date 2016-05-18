@@ -29,7 +29,8 @@ class LSHMiner (
       println("lsh bucket " + index + "/" + buckets.length + " size "
         + splits.length + "/" + groups.length)
       index += 1
-      mineSplits(splits)
+      val input = splits.fold(ArrayBuffer[Int]())( _ ++= _ )
+      mine(input, minSupport, splitSize)
     })
 
     freqInBucket.fold(ArrayBuffer[ArrayBuffer[Int]]())( _ ++= _ ).distinct
