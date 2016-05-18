@@ -27,15 +27,16 @@ class CPFTL(
   private val prefetchActor = MineSystem.actorOf(Props(new PrefetchActor()))
 
   override def read(lpn:Int):Int = {
-    Static.prefetchStart
-    prefetchActor ! NewAccess(lpn)
-    Static.prefetchStop
-
     if ( dftl_table(lpn).cached == false ) {
       Static.cacheMiss
     } else {
       Static.cacheHit
     }
+
+    Static.prefetchStart
+    prefetchActor ! NewAccess(lpn)
+    Static.prefetchStop
+
     super.realRead(lpn)
   }
 
@@ -93,7 +94,9 @@ class CPFTL(
         }
       }
       case NewSequence(tmp_accessSequence) => {
-        val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
+        Static.miningStart(tmp_accessSequence)
+        val correlations = miningFrequentSubSequence(tmp_accessSequence)
+        val tmp_correlations = correlations
         .map(seq => {
           val bf:BloomFilter[Int] = new FilterBuilder(seq.length, false_positive_rate).buildBloomFilter()
           bf.addAll(seq.asJava)
@@ -111,7 +114,7 @@ class CPFTL(
 
         prefetchActor ! NewCorrelations(tmp_correlations, tmp_bf)
 
-        println("#correlations: " + tmp_correlations.length)
+        Static.miningStop(correlations)
       }
     }
 

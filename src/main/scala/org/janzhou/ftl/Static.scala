@@ -2,7 +2,7 @@ package org.janzhou.ftl
 
 object Static {
 
-  def now = {
+  def now:Long = {
     System.nanoTime()
   }
 
@@ -50,6 +50,16 @@ object Static {
       _cacheHit = 0
       _cacheMiss = 0
     }
+  }
+
+  private var _miningStart:Long = 0L
+  def miningStart(seq:List[Int]) = {
+    _miningStart = now
+    println("mining start: " + seq.length)
+  }
+
+  def miningStop(correlations:List[List[Int]]) = {
+    println("mining stop: " + correlations.length + " time spend: " + (now - _miningStart) + " ns")
   }
 
 }
