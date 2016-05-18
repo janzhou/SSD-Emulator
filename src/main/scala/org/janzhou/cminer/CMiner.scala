@@ -8,7 +8,7 @@ trait Miner {
 }
 
 class CMiner (
-  val minSupport:Double = 0.1,
+  val minSupport:Int = 2,
   val splitSize:Int = 512,
   val depth:Int = 64
 ) extends Miner {
@@ -30,23 +30,19 @@ class CMiner (
     }
   }
 
-  private def frequentSubsequence(list:List[CMinerSubsequence])
+  private def frequentSubsequence(list:List[CMinerSubsequence], minSupport:Int)
   :List[CMinerSubsequence] = {
     val support = list groupBy identity mapValues (_.length)
-
-    val min = list.length * minSupport
 
     list.foreach { element =>
       element.support = support(element)
     }
 
-    list.filter( _.support >= min )
+    list.filter( _.support >= minSupport )
   }
 
-  private def firstLevelSubSequences(seq:List[Int])
+  private def firstLevelSubSequences(splits:List[List[Int]])
   :List[CMinerSubsequence] = {
-    val splits = seq.grouped(splitSize).toList
-
     splits.flatMap( split => {
       split.zipWithIndex.map{ case (access, pos) => {
         new CMinerSubsequence(List(access), split.toArray, pos, null)
@@ -64,14 +60,25 @@ class CMiner (
     })
   }
 
-  def mine(seq:List[Int]):List[List[Int]] = {
-    var subSequence = frequentSubsequence(firstLevelSubSequences(seq))
+  protected def mineSplit(split:List[List[Int]])
+  :List[List[Int]] = {
+    var subSequence = frequentSubsequence(
+      firstLevelSubSequences(split),
+      minSupport
+    )
 
     for ( i <- 1 to depth - 1 ) {
-      subSequence = frequentSubsequence(nextLevelSubSequence(subSequence))
+      subSequence = frequentSubsequence(
+        nextLevelSubSequence(subSequence),
+        minSupport
+      )
     }
 
     subSequence.map( _.seq ).distinct
+  }
+
+  def mine(seq:List[Int]):List[List[Int]] = {
+    mineSplit(seq.grouped(splitSize).toList)
   }
 
   assert(splitSize >= depth)

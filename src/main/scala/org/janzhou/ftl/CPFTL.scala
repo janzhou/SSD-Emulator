@@ -37,7 +37,7 @@ class CPFTL(
     prefetchActor ! NewAccess(lpn)
     Static.prefetchStop
 
-    super.realRead(lpn)
+    realRead(lpn)
   }
 
   case class NewAccess(lpn:Int)
