@@ -10,6 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 
 import org.janzhou.cminer._
+import java.io._
 
 class CPFTL(
   val device:Device,
@@ -79,6 +80,10 @@ class CPFTL(
         }
       }
       case NewSequence(tmp_accessSequence) => {
+        val oos = new ObjectOutputStream(new FileOutputStream("/tmp/accessSequence." + tmp_accessSequence.##))
+        oos.writeObject(tmp_accessSequence)
+        oos.close
+
         Static.miningStart(tmp_accessSequence)
         val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
         Static.miningStop(tmp_correlations)
