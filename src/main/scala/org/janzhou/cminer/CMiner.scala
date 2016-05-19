@@ -8,6 +8,14 @@ trait Miner {
   def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]]
 }
 
+class SimpleMiner (
+  val splitSize:Int = 512
+) extends Miner {
+  def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
+    seq.grouped(512).to[ArrayBuffer]
+  }
+}
+
 class CMiner (
   val minSupport:Int = 2,
   val splitSize:Int = 512,

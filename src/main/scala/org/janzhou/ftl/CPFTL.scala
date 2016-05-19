@@ -41,17 +41,19 @@ class CPFTL(
 
   case class NewAccess(lpn:Int)
   case class NewSequence(seq:ArrayBuffer[Int])
-  case class NewCorrelations(correlations: HashMap[Int, ArrayBuffer[Int]])
+  case class NewCorrelations(correlations: HashMap[Int, ArrayBuffer[ArrayBuffer[Int]]])
 
   class PrefetchActor extends Actor with ActorLogging {
     private var accessSequence = ArrayBuffer[Int]()
-    private var correlations = HashMap[Int, ArrayBuffer[Int]]()
+    private var correlations = HashMap[Int, ArrayBuffer[ArrayBuffer[Int]]]()
 
     private def prefetch(lpn:Int) = {
       if ( dftl_table(lpn).cached == false ) {
         if ( correlations contains lpn ) {
-          correlations(lpn).foreach(lpn => {
-            cache(lpn)
+          correlations(lpn).foreach(seq => {
+            seq.foreach( lpn => {
+              cache(lpn)
+            })
           })
         }
       }
@@ -89,13 +91,13 @@ class CPFTL(
         val tmp_correlations = miningFrequentSubSequence(tmp_accessSequence)
         Static.miningStop(tmp_correlations)
 
-        var correlations = HashMap[Int, ArrayBuffer[Int]]()
+        var correlations = HashMap[Int, ArrayBuffer[ArrayBuffer[Int]]]()
         tmp_correlations.foreach(seq => {
           seq.foreach(lba => {
             if( correlations contains lba ) {
-              correlations(lba) ++= seq
+              correlations(lba) += seq
             } else {
-              correlations += lba -> seq
+              correlations += lba -> ArrayBuffer(seq)
             }
           })
         })
@@ -108,11 +110,7 @@ class CPFTL(
 
 
     private def miningFrequentSubSequence (accessSequence:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
-      if( miner == null ) {
-        accessSequence.grouped(512).to[ArrayBuffer]
-      } else {
-        miner.mine(accessSequence)
-      }
+      miner.mine(accessSequence)
     }
   }
 }
