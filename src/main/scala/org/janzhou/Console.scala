@@ -5,8 +5,11 @@ object console {
   def print_level(s:String) = level(s)
 
   def level(s:String) = {
-    val (p, l) = prefix.zipWithIndex.filter{ case (p, l) => p == "["+s+"]" }.head
-    _print_level = l
+    prefix.zipWithIndex.filter{ case (p, l) => p == "["+s+"] " }.foreach{
+      case (p, l) => _print_level = l
+    }
+
+    log("print level " + s + " " + _print_level)
   }
 
   def error(s:Any) = console_print(s, 0)
