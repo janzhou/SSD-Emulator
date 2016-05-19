@@ -11,7 +11,7 @@ object CMinerTestFile {
     val seq = oos.readObject().asInstanceOf[ArrayBuffer[Int]]
     oos.close
 
-    val miner = new LSHMiner(2, 64, 16)
+    val miner = new LSHMiner(2, 64, 8)
     miner.mine(seq).map(println)
   }
 }

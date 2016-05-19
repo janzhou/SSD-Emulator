@@ -58,8 +58,8 @@ class CMiner (
     minSupport:Int,
     splitSize:Int
   ):ArrayBuffer[CMinerSubsequence] = {
-    val count = input.groupBy(identity).mapValues(_.size)
-    val filtered = input.filter( count(_) >= minSupport )
+    val count = input.groupBy(identity).mapValues(_.size).filter( _._2 >= minSupport )
+    val filtered = input.filter( count.contains(_) )
     val ret = filtered.grouped(splitSize).flatMap( split => {
       split.zipWithIndex.flatMap{ case (access, pos) => {
         for ( p <- pos + 1 to split.length - 1 ) yield {
