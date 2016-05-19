@@ -83,6 +83,9 @@ object main {
     } else {
       args(0) match {
         case "dftl" => new DFTL(device)
+        case "simplecpftl" => new CPFTL(device, null,
+          config.getInt("CPFTL.accessSequenceLength")
+        )
         case "cpftl" => new CPFTL(device,
           new CMiner(
             config.getInt("CMiner.minSupport"),

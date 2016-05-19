@@ -108,7 +108,11 @@ class CPFTL(
 
 
     private def miningFrequentSubSequence (accessSequence:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
-      miner.mine(accessSequence)
+      if( miner == null ) {
+        accessSequence.grouped(512).to[ArrayBuffer]
+      } else {
+        miner.mine(accessSequence)
+      }
     }
   }
 }
