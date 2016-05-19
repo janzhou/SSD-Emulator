@@ -94,9 +94,7 @@ object main {
           new LSHMiner(
             config.getInt("LSHMiner.minSupport"),
             config.getInt("LSHMiner.splitSize"),
-            config.getInt("LSHMiner.depth"),
-            config.getInt("LSHMiner.buckets"),
-            config.getInt("LSHMiner.stages")
+            config.getInt("LSHMiner.depth")
           ),
           config.getInt("CPFTL.accessSequenceLength")
         )
