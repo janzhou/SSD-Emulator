@@ -15,6 +15,7 @@ class CMiner (
 ) extends Miner {
   class CMinerSubsequence(
     val seq:ArrayBuffer[Int],
+    val next:Int,
     val split:ArrayBuffer[Int],
     val pos:Int,
     val father_support:Int
@@ -22,12 +23,12 @@ class CMiner (
     var support = 0
 
     override def equals(o: Any) = o match {
-      case that:CMinerSubsequence => this.seq.equals(that.seq)
+      case that:CMinerSubsequence => this.seq.equals(that.seq) && this.next.equals(that.next)
       case _ => false
     }
 
     override def hashCode():Int = {
-      this.seq.hashCode
+      (this.seq, this.next).hashCode
     }
   }
 
@@ -62,7 +63,7 @@ class CMiner (
     val ret = filtered.grouped(splitSize).flatMap( split => {
       split.zipWithIndex.flatMap{ case (access, pos) => {
         for ( p <- pos + 1 to split.length - 1 ) yield {
-          new CMinerSubsequence(ArrayBuffer(access, split(p)), split, p, count(access))
+          new CMinerSubsequence(ArrayBuffer(access), split(p), split, p, count(access))
         }
       }}
     }).to[ArrayBuffer]
@@ -72,10 +73,10 @@ class CMiner (
 
   private def nextLevelSubSequence(list:ArrayBuffer[CMinerSubsequence])
   :ArrayBuffer[CMinerSubsequence] = {
+    val seq = list.head.seq :+ list.head.next
     list.flatMap( father => {
       for ( pos <- father.pos + 1 to father.split.length - 1 ) yield {
-        val seq = father.seq :+ father.split(pos)
-        new CMinerSubsequence(seq, father.split, pos, father.support)
+        new CMinerSubsequence(seq, father.split(pos), father.split, pos, father.support)
       }
     })
   }
@@ -108,7 +109,7 @@ class CMiner (
       firstLevelSubSequences(input, minSupport, splitSize),
       minSupport,
       depth - 2
-    ).to[ArrayBuffer].map(_.seq)
+    ).map(x => x.seq :+ x.next).to[ArrayBuffer]
   }
 
   def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
