@@ -1,8 +1,10 @@
 package org.janzhou.ftl
 
+import org.janzhou.console
+
 class DFTL(device:Device) extends FTL(device) {
 
-  println("DFTL")
+  console.debug("DFTL")
 
   class dftl_block(val id:Int) {
     var lpns = List[Int]()

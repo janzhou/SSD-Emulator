@@ -9,6 +9,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 
+import org.janzhou.console
 import org.janzhou.cminer._
 import java.io._
 
@@ -18,7 +19,7 @@ class CPFTL(
   val accessSequenceLength:Int = 4096
 ) extends DFTL(device) {
 
-  println("CPFTL")
+  console.debug("CPFTL")
 
   private val MineSystem = ActorSystem("Miner")
   private val mineActor = MineSystem.actorOf(Props(new MineActor()))

@@ -1,6 +1,7 @@
 package org.janzhou.ssd_blkdev
 
 import com.sun.jna._
+import org.janzhou.console
 import org.janzhou.ftl._
 import org.janzhou.native._
 import org.janzhou.cminer._
@@ -11,7 +12,7 @@ import com.typesafe.config.{ Config, ConfigFactory }
 
 object main {
   private def load_config(config: Array[String]):Config = {
-    val _config = config.reverse ++ Array("default", "cminer", "lshminer", "cpftl")
+    val _config = config.reverse ++ Array("default", "cminer", "lshminer", "cpftl", "console")
     _config.map(config => if( config.endsWith(".conf") ) {
       ConfigFactory.parseFile(new File(config))
     } else ConfigFactory.load(config) )
@@ -39,7 +40,7 @@ object main {
         this.synchronized {
           _heartbeat += 1
           if ( _heartbeat >= 1024 ) {
-            println("background gc")
+            console.info("background gc")
             if (!ftl.gc) {
               _heartbeat = 0
             }
@@ -53,27 +54,27 @@ object main {
     }
   }
 
-
-
   def main (args: Array[String]) {
-    val fd = libc.run.open("/dev/ssd_ramdisk", libc.O_RDWR)
-
-    if (fd < 0) {
-      println("Failed to open the device node");
-      return
-    }
-
-    libc.run.ioctl(fd, 0x7800) //SSD_BLKDEV_REGISTER_APP
-    println("Successfully registered the application with SSD RAMDISK driver.")
-
-    val req_size = libc.run().malloc(8)
-
     val config = if ( args.length > 1 ) {
       val ( _, config ) = args splitAt 1
       load_config(config)
     } else {
       load_config()
     }
+
+    console.print_level(config.getString("Console.print_level"))
+
+    val fd = libc.run.open("/dev/ssd_ramdisk", libc.O_RDWR)
+
+    if (fd < 0) {
+      console.info("Failed to open the device node");
+      return
+    }
+
+    libc.run.ioctl(fd, 0x7800) //SSD_BLKDEV_REGISTER_APP
+    console.info("Successfully registered the application with SSD RAMDISK driver.")
+
+    val req_size = libc.run().malloc(8)
 
     val device = new Device(fd, config)
 

@@ -4,6 +4,8 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
 import info.debatty.java.lsh.LSHMinHash
 
+import org.janzhou.console
+
 class LSHMiner (
   override val minSupport:Int = 2,
   override val splitSize:Int = 512,
@@ -28,13 +30,13 @@ class LSHMiner (
     //buckets.foreach( println )
     var index = 1
     val freqInBucket = buckets.map( splits => {
-      println(splits)
-      println("lsh bucket " + index + "/" + buckets.length + " size "
+      console.debug(splits)
+      console.info("lsh bucket " + index + "/" + buckets.length + " size "
         + splits.length + "/" + groups.length)
       index += 1
       val input = splits.fold(ArrayBuffer[Int]())( _ ++= _ )
       val output = mine(input, minSupport, splitSize)
-      println("correlation mined " + output.length)
+      console.info("correlation mined " + output.length)
       output
     })
 

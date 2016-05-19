@@ -1,8 +1,10 @@
 package org.janzhou.ftl
 
+import org.janzhou.console
+
 class DirectFTL(device:Device) extends FTL(device) {
 
-  println("DirectFTL")
+  console.debug("DirectFTL")
 
   def read(lpn:Int):Int = {
     lpn

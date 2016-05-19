@@ -2,6 +2,8 @@ package org.janzhou.ftl
 
 import scala.collection.mutable.ArrayBuffer
 
+import org.janzhou.console
+
 object Static {
 
   def now:Long = {
@@ -25,7 +27,7 @@ object Static {
 
   private def printPrefetch = {
     if ( _prefetchCount >= 8192 ) {
-      println("prefetch delay " + ( _prefetchDelay / _prefetchCount ) + " ns" )
+      console.info("prefetch delay " + ( _prefetchDelay / _prefetchCount ) + " ns" )
       _prefetchDelay = 0L
       _prefetchCount = 0L
     }
@@ -48,7 +50,7 @@ object Static {
   private def printCache = {
     if( _cacheMiss + _cacheHit >= 8192 ) {
       val ratio:Double =   _cacheHit  * 100 / ( _cacheHit + _cacheMiss )
-      println("cache hit: " + ratio )
+      console.info("cache hit: " + ratio )
       _cacheHit = 0
       _cacheMiss = 0
     }
@@ -57,11 +59,11 @@ object Static {
   private var _miningStart:Long = 0L
   def miningStart(seq:ArrayBuffer[Int]) = {
     _miningStart = now
-    println("mining start: " + seq.length)
+    console.info("mining start: " + seq.length)
   }
 
   def miningStop(correlations:ArrayBuffer[ArrayBuffer[Int]]) = {
-    println("mining stop: " + correlations.length + " time spend: " + (now - _miningStart) + " ns")
+    console.info("mining stop: " + correlations.length + " time spend: " + (now - _miningStart) + " ns")
   }
 
 }
