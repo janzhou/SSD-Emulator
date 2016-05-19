@@ -73,7 +73,10 @@ class CMiner (
 
   private def nextLevelSubSequence(list:ArrayBuffer[CMinerSubsequence])
   :ArrayBuffer[CMinerSubsequence] = {
+    if ( list.isEmpty ) return ArrayBuffer[CMinerSubsequence]()
+
     val seq = list.head.seq :+ list.head.next
+
     list.flatMap( father => {
       for ( pos <- father.pos + 1 to father.split.length - 1 ) yield {
         new CMinerSubsequence(seq, father.split(pos), father.split, pos, father.support)
