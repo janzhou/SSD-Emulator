@@ -13,23 +13,26 @@ object Static {
   private var _prefetchStart:Long = 0L
   private var _prefetchDelay:Long = 0L
   private var _prefetchCount:Long = 0L
+  private var _prefetchNumber:Long = 0L
 
   def prefetchStart = {
     _prefetchStart = now
 
   }
 
-  def prefetchStop = {
+  def prefetchStop(num:Int) = {
     _prefetchDelay += ( now - _prefetchStart )
     _prefetchCount += 1
+    _prefetchNumber += num
     printPrefetch
   }
 
   private def printPrefetch = {
     if ( _prefetchCount >= 8192 ) {
-      console.info("prefetch delay " + ( _prefetchDelay / _prefetchCount ) + " ns" )
+      console.info("prefetch " + _prefetchNumber + " delay " + ( _prefetchDelay / _prefetchCount ) + " ns" )
       _prefetchDelay = 0L
       _prefetchCount = 0L
+      _prefetchNumber = 0L
     }
   }
 
