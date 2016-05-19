@@ -1,7 +1,8 @@
 package org.janzhou.cminer
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
-import info.debatty.java.lsh.LSHSuperBit
+import info.debatty.java.lsh.LSHMinHash
 
 class LSHMiner (
   override val minSupport:Int = 2,
@@ -10,12 +11,12 @@ class LSHMiner (
   val buckets:Int = 128,
   val stages:Int = 8
 ) extends CMiner (minSupport, splitSize, depth) {
-  private val lsh = new LSHSuperBit(stages, buckets, splitSize)
+  private val lsh = new LSHMinHash(stages, buckets, splitSize)
 
   private def lshGroup(splits:ArrayBuffer[ArrayBuffer[Int]], minSupport:Int)
   :ArrayBuffer[ArrayBuffer[ArrayBuffer[Int]]] = {
     splits.map( seq =>
-      (lsh.hash(seq.toArray)(stages - 1), seq)
+      (lsh.hash(setAsJavaSet(seq.map( i => i:java.lang.Integer ).toSet))(stages - 1), seq)
     ).groupBy( _._1 ).filter(_._2.length >= minSupport)
     .map(_._2.map(_._2)).to[ArrayBuffer]
   }

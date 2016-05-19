@@ -8,7 +8,8 @@ scalacOptions ++= Seq("-optimise", "-feature", "-deprecation")
 
 libraryDependencies += "net.java.dev.jna" % "jna" % "4.2.1"
 libraryDependencies += "com.typesafe" % "config" % "1.2.1"
-libraryDependencies += "info.debatty" % "java-lsh" % "0.8"
+//libraryDependencies += "info.debatty" % "java-lsh" % "0.8"
+libraryDependencies += "info.debatty" % "java-string-similarity" % "0.13"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.1"
 
 resolvers += Resolver.jcenterRepo
