@@ -21,7 +21,7 @@ class LSHMiner (
   }
 
   override def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
-    val groups = seq.grouped(splitSize).to[ArrayBuffer]
+    val groups = seq.grouped(splitSize).filter(_.length == splitSize).to[ArrayBuffer]
 
     val buckets = lshGroup(groups, minSupport)
     var index = 1

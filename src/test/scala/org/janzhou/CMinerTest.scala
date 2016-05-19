@@ -7,7 +7,7 @@ import util.Random
 
 object CMinerTest {
   def main (args: Array[String]) {
-    val miner = new LSHMiner(2, 3, 3)
+    val miner = new LSHMiner(2, 4, 3)
     val seq = ArrayBuffer(
       0,1,3,
       0,1,3,
