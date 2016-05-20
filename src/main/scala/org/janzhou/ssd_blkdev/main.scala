@@ -12,15 +12,10 @@ import com.typesafe.config.{ Config, ConfigFactory }
 
 object main {
   private def load_config(config: Array[String]):Config = {
-    val _config = config.reverse ++ Array("default", "cminer", "lshminer", "cpftl", "console")
-    _config.map(config => if( config.endsWith(".conf") ) {
+    config.map(config => if( config.endsWith(".conf") ) {
       ConfigFactory.parseFile(new File(config))
     } else ConfigFactory.load(config) )
     .reduce(_.withFallback(_))
-  }
-
-  private def load_config():Config = {
-    ConfigFactory.load("default")
   }
 
   class GCThread(ftl:FTL) extends Thread {
@@ -55,11 +50,13 @@ object main {
   }
 
   def main (args: Array[String]) {
+    val default_config = Array("default", "cminer", "lshminer", "cpftl", "console")
+
     val config = if ( args.length > 1 ) {
       val ( _, config ) = args splitAt 1
-      load_config(config)
+      load_config(config.reverse ++ default_config)
     } else {
-      load_config()
+      load_config(default_config)
     }
 
     console.print_level(config.getString("Console.print_level"))
