@@ -10,6 +10,39 @@ object Static {
     System.nanoTime()
   }
 
+  private var _flashDelayAvg = 0L
+  private var _flashDelayCount = 0L
+  def flashDelay(delay:Long) = {
+    _flashDelayCount += 1
+    _flashDelayAvg = _flashDelayAvg + (delay - _flashDelayAvg)/_flashDelayCount;
+  }
+  def flashDelayPrint = {
+    console.debug("flash delay " + _flashDelayAvg + " ns")
+  }
+
+
+  private var _requestIn = 0L
+  private var _requestAvg = 0L
+  private var _requestCount = 0L
+  private var _requestNum = 0L
+
+  def requestIn = {
+    _requestIn = now
+  }
+
+  def requestOut(num:Int) = {
+    val delay = (now - _requestIn)
+    _requestCount += 1
+    _requestAvg = _requestAvg + (delay - _requestAvg)/_requestCount;
+
+    _requestNum = _requestNum + (num - _requestNum)/_requestCount;
+    _requestIn = 0L
+  }
+
+  def requestPrint = {
+    console.debug("request " + _requestNum + " avg. delay " + _requestAvg + " s")
+  }
+
   private var _prefetchStart:Long = 0L
   private var _prefetchDelay:Long = 0L
   private var _prefetchCount:Long = 0L

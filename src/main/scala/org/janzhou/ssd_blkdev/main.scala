@@ -112,6 +112,9 @@ object main {
     gc_thread.start()
 
     sys.addShutdownHook({
+      Static.requestPrint
+      Static.flashDelayPrint
+
       gc_thread.stopGC
       gc_thread.join()
       libc.run().close(fd);
@@ -121,7 +124,12 @@ object main {
       libc.run.ioctl(fd, 0x80087801, req_size) //SSD_BLKDEV_GET_REQ_SIZE
 
       val request_map = libc.run().calloc(req_size.getInt(0), 88) //sizeof(*request_map)
+
+      var num_lbas = 0
+
       libc.run.ioctl(fd, 0x80087802, request_map) //SSD_BLKDEV_GET_LBN
+
+      Static.requestIn
 
       gc_thread.synchronized {
         for( i <- 0 to req_size.getInt(0) - 1 ) {
@@ -150,6 +158,7 @@ object main {
                 //println(time.format(Calendar.getInstance().getTime()) + " R " + lpn + " " + ppn)
                 ppn
               } else {
+                num_lbas += 1
                 val ppn = if ( sector_offset != 0 || num_sectors - i < device.SectorsPerPage ) {
                   //println("partial write lpn " + lpn + " sector " + sector + " offset " + sector_offset + " start_lba " + start_lba + " num_sectors " + num_sectors)
                   val old_ppn = ftl.read(lpn)
@@ -173,8 +182,9 @@ object main {
         gc_thread.heartbeat
       }
 
+      Static.requestOut(num_lbas)
       libc.run.ioctl(fd, 0x40087803, request_map) //SSD_BLKDEV_GET_LBN
-      libc.run.free(request_map);
+      libc.run.free(request_map)
     }
 
     libc.run().close(fd);
