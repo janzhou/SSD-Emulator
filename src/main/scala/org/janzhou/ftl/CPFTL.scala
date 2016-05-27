@@ -8,7 +8,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import org.janzhou.bloom.BloomFilterTree
+import org.janzhou.bloom.BloomFilterTreeNew
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -46,15 +46,20 @@ class CPFTL(
   case class NewAccess(lpn:Int)
   case class NewSequence(seq:ArrayBuffer[Int])
 
-  private var tree = new BloomFilterTree[Int](false_positive_rate)
+  private var tree = new BloomFilterTreeNew[Int](false_positive_rate)
 
   private def prefetch(lpn:Int):Int = {
     var fetched = 0
     if ( dftl_table(lpn).cached == false ) {
-      tree.search(lpn).foreach( seq => {
+      val prefetch_list = tree.search(lpn)
+      if( prefetch_list.size >= 1 ) {
+        for( i <- 1 to prefetch_list.size ) device.PageReadDelay
+        console.debug3("prefetch " + prefetch_list.size)
+      }
+      prefetch_list.foreach( seq => {
         seq.foreach( lpn => {
-          cache(lpn)
           if ( dftl_table(lpn).cached == false ) fetched += 1
+          cache(lpn)
         })
       })
     }
@@ -82,7 +87,7 @@ class CPFTL(
         val raw_correlations = miningFrequentSubSequence(tmp_accessSequence)
         Static.miningStop(raw_correlations)
 
-        tree = new BloomFilterTree[Int](false_positive_rate) ++ raw_correlations
+        tree = new BloomFilterTreeNew[Int](false_positive_rate) ++ raw_correlations
       }
     }
 

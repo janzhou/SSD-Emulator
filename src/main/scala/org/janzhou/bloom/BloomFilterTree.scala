@@ -11,7 +11,7 @@ class BloomFilterTree[T:ClassTag](
 
   def ++(that:Iterable[Iterable[T]]):this.type = add(that)
   def +=(that:Iterable[Iterable[T]]):this.type = add(that)
-  
+
   def add(that:Iterable[Iterable[T]]):this.type = {
     array = array ++ that.map(array => {
       val bf:BloomFilter[T] = BloomFilter.optimallySized[T](
@@ -36,7 +36,7 @@ class BloomFilterTree[T:ClassTag](
   def search(element:T):Iterable[Iterable[T]] = {
     if( bf != null && bf.contains(element) ) {
       array.filter( x =>
-        x._1.contains(element)// && x._2.contains(element)
+        x._1.contains(element) && x._2.exists(_ == element)
       ).map( _._2 )
     } else  Iterable[Iterable[T]]()
   }
