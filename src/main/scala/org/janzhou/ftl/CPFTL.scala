@@ -8,7 +8,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import breeze.util.BloomFilter
+import org.janzhou.bloom.BloomFilterTree
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -46,28 +46,17 @@ class CPFTL(
   case class NewAccess(lpn:Int)
   case class NewSequence(seq:ArrayBuffer[Int])
 
-  private var correlations = ArrayBuffer[(BloomFilter[Int], ArrayBuffer[Int])]()
-  private var bf:BloomFilter[Int] = BloomFilter.optimallySized[Int](accessSequenceLength, false_positive_rate)
+  private var tree = new BloomFilterTree[Int](false_positive_rate)
 
   private def prefetch(lpn:Int):Int = {
     var fetched = 0
     if ( dftl_table(lpn).cached == false ) {
-      if( false_positive_rate > 0 ) {
-        if ( bf.contains(lpn) ) {
-          for( (bf, correlation) <- correlations ) {
-            if ( bf.contains(lpn) ) {
-              fetched += correlation.length
-              correlation.foreach( lpn => cache(lpn) )
-            }
-          }
-        }
-      } else {
-        correlations.map(_._2).filter( _.contains(lpn) )
-        .foreach( seq => {
-          fetched += seq.length
-          seq.foreach( lpn => cache(lpn) )
+      tree.search(lpn).foreach( seq => {
+        seq.foreach( lpn => {
+          cache(lpn)
+          if ( dftl_table(lpn).cached == false ) fetched += 1
         })
-      }
+      })
     }
     fetched
   }
@@ -93,29 +82,7 @@ class CPFTL(
         val raw_correlations = miningFrequentSubSequence(tmp_accessSequence)
         Static.miningStop(raw_correlations)
 
-        val tmp_correlations = raw_correlations
-        .map(seq => {
-          val bf:BloomFilter[Int] = BloomFilter.optimallySized[Int](
-            seq.length, false_positive_rate
-          )
-
-          seq.foreach( bf += _ )
-          (bf, seq)
-        })
-
-        val tmp_bf = if( false_positive_rate > 0 ) {
-          val full = tmp_correlations.map(_._2).fold(ArrayBuffer[Int]())( _ ++ _ )
-          val tmp_bf:BloomFilter[Int] = BloomFilter.optimallySized[Int](
-            full.length, false_positive_rate
-          )
-          full.foreach( tmp_bf += _ )
-          tmp_bf
-        } else {
-          null
-        }
-
-        correlations = tmp_correlations
-        bf = tmp_bf
+        tree = new BloomFilterTree[Int](false_positive_rate) ++ raw_correlations
       }
     }
 
