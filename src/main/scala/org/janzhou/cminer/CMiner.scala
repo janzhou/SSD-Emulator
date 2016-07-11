@@ -12,7 +12,7 @@ class SimpleMiner (
   val splitSize:Int = 512
 ) extends Miner {
   def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
-    seq.grouped(512).to[ArrayBuffer]
+    seq.grouped(splitSize).to[ArrayBuffer]
   }
 }
 
