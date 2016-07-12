@@ -7,7 +7,7 @@ enablePlugins(GitVersioning)
 scalacOptions ++= Seq("-optimise", "-feature", "-deprecation")
 
 libraryDependencies ++= Seq(
-  "net.java.dev.jna" % "jna" % "4.2.1",
+  "org.janzhou" %% "native" % "0.1.3",
   "com.typesafe" % "config" % "1.2.1",
   "info.debatty" % "java-string-similarity" % "0.13",
   "com.typesafe.akka" %% "akka-actor" % "2.4.1",
@@ -15,3 +15,4 @@ libraryDependencies ++= Seq(
 )
 
 resolvers += Resolver.jcenterRepo
+resolvers += "janzhou-github-mvn-repo" at "https://raw.githubusercontent.com/janzhou/mvn-repo/master"

@@ -1,6 +1,5 @@
 package org.janzhou.ssd_blkdev
 
-import com.sun.jna._
 import org.janzhou.console
 import org.janzhou.ftl._
 import org.janzhou.native._
