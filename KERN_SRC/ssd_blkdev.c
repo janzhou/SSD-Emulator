@@ -10,7 +10,6 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/blkdev.h>
-#include <linux/vmalloc.h>
 
 #include "ssd_blkdev.h"
 
@@ -48,6 +47,7 @@ static u8 lba_wait_flag, ppn_wait_flag, req_size_flag;
 static struct task_struct *user_app;
 
 struct ssd_page_buff {
+	unsigned long ppn;
 	u8 buff[SSD_PAGE_SIZE];
 };
 
@@ -57,9 +57,22 @@ static u8 ssd_dev_data[SSD_TOTAL_SIZE];
 
 int major;
 
+static void ssd_dev_move_page(struct ssd_move_page ssd_move_page)
+{
+	unsigned long new_ppn = ssd_move_page.new_ppn;
+	unsigned long old_ppn = ssd_move_page.old_ppn;
+
+	memcpy(ssd_dev_data + new_ppn * SSD_PAGE_SIZE,
+			ssd_dev_data + old_ppn * SSD_PAGE_SIZE, SSD_PAGE_SIZE);
+
+	ssd_page_buff.ppn = new_ppn;
+}
+
 static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 		unsigned cmd, unsigned long arg)
 {
+	struct ssd_move_page ssd_move_page;
+
 	switch (cmd) {
 	case SSD_BLKDEV_REGISTER_APP:
 		user_app = current;
@@ -83,6 +96,12 @@ static int ssd_dev_ioctl(struct block_device *blkdev, fmode_t mode,
 		wake_up_interruptible(&sector_ppn_wq);
 		break;
 
+	case SSD_BLKDEV_MOVE_PAGE:
+		copy_from_user((struct ssd_move_page *) &ssd_move_page,
+				(struct ssd_move_page __user *)arg, sizeof(ssd_move_page));
+		ssd_dev_move_page(ssd_move_page);
+		break;
+
 	default:
 		return -ENOTTY;
 	}
@@ -97,7 +116,11 @@ static void ssd_dev_read_page(unsigned long ppn)
 			return;
 	}
 
+	if (ppn == ssd_page_buff.ppn)
+		return;
+
 	memcpy(ssd_page_buff.buff, ssd_dev_data + ppn * SSD_PAGE_SIZE, SSD_PAGE_SIZE);
+	ssd_page_buff.ppn = ppn;
 }
 
 static void ssd_dev_read(struct ssd_request_map *req_map)
@@ -143,10 +166,11 @@ static void ssd_dev_write(struct ssd_request_map *req_map)
 	ssd_dev_read_page(ppn);
 
 	memcpy(ssd_page_buff.buff + sector_offset * SSD_SECTOR_SIZE,
-			kern_buff,
-			num_sectors * SSD_SECTOR_SIZE);
+			kern_buff, num_sectors * SSD_SECTOR_SIZE);
 
 	ssd_dev_write_page(new_ppn);
+
+	ssd_page_buff.ppn = new_ppn;
 }
 
 static int ssd_transfer(struct request *req)
