@@ -5,11 +5,6 @@
 #include "../kernel/ssd_blkdev.h"
 
 enum {
-	READ,
-	WRITE
-};
-
-enum {
 	false	= 0,
 	true	= 1
 };
